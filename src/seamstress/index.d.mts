@@ -73,7 +73,7 @@ export interface SeamstressChunk {
 	* @param offset Same as `SeamstressChunk.offset`.
 	* @param size Same as `SeamstressChunk.size`.
 	*/
-	constructor(id: number, chunkId: number, type: number|string, offset: number, size: number);
+	constructor(id: number, chunkId: number, type: number|string, offset: number, size: number): SeamstressChunk;
 }
 
 export class SeamstressStrictWriter {
