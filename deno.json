@@ -1,0 +1,30 @@
+{
+	"name": "@ltgc/seamstress",
+	"version": "0.0.1",
+	"license": "LGPL-3.0-only",
+	"exports": {
+		"./seamstress": "./dist/seamstress.d.mts"
+	},
+	"publish": {
+		"include": [
+			"dist/**",
+			"README.md"
+		]
+	},
+	"fmt": {
+		"useTabs": true,
+		"lineWidth": 200,
+		"indentWidth": 4,
+		"semiColons": true,
+		"exclude": [
+			"*"
+		]
+	},
+	"lint": {
+		"exclude": [
+			"*"
+		]
+	},
+	"nodeModulesDir": false,
+	"npmRegistry": "http://127.0.0.1:80/"
+}
