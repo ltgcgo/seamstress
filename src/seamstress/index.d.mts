@@ -39,11 +39,20 @@ export class IntegerHandler {
 }
 
 export interface SeamstressContext {
-	/** Defines the maximum length of the stream that's expected. If the stream exceeds the specified size, it will be cut off at the specified size (length <= size + headerSize). It's always desired to keep the size sealed once parsed. Keep undefined when the size is not or cannot be known. */
+	/**
+	* This field may not be present.
+	* Defines the maximum length of the stream that's expected. If the stream exceeds the specified size, it will be cut off at the specified size (length <= size + headerSize). It's always desired to keep the size sealed once parsed. Keep undefined when the size is not or cannot be known.
+	*/
 	size?: number;
-	/** Defines the base structure type of the stream. Common values include `RIFF` for RIFF streams and `FORM` for IFF streams. */
+	/**
+	* This field may not be present.
+	* Defines the base structure type of the stream. Common values include `RIFF` for RIFF streams and `FORM` for IFF streams.
+	*/
 	binaryType?: string;
-	/** Defines the upper format of the stream. Common values include `WAVE` for the Microsoft `.wav` files, and `AIFF` for the Apple `.aif` files. */
+	/**
+	* This field may not be present.
+	* Defines the upper format of the stream. Common values include `WAVE` for the Microsoft `.wav` files, and `AIFF` for the Apple `.aif` files.
+	*/
 	binaryFormat?: string;
 }
 
@@ -125,7 +134,7 @@ export class Seamstress {
 	headerSize: number;
 	/** The type flags of the Seamstress instance. */
 	type: number;
-	/** Handles the header chunk. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
+	/** (WIP) Handles the header chunk. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
 	* @param buffer The header getting passed into the handler.
 	* @returns The parsed object that will modify the reader behaviour and provide as the initial context for the streams.
 	*/
@@ -139,7 +148,11 @@ export class Seamstress {
 	* Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered.
 	* @param bypassRegulator When true, the stream chunk regulation method will never be called.
 	*/
-	readStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>, bypassRegulator: boolean): ReadableStream<SeamstressChunk>;
+	readStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): ReadableStream<SeamstressChunk>;
+	/**
+	* (WIP) Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered, however when the regulator is present, it can be used to ensure that the partial structure of each (in)complete subchunk will be intact. The stream chunk regulation method will be called on each incomplete chunk to regulate the sizes. The final subchunk of each chunk will not have the regulator called. If there is no regulator, this method will error out immediately.
+	*/
+	readRegulated(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): ReadableStream<SeamstressChunk>;
 	/**
 	* Reads the incoming stream, and emits a stream of fully buffered chunks.
 	* @param flushAll When true, unfinished chunks will also be flushed instead of discarded.

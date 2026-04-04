@@ -203,6 +203,32 @@ let IntegerHandler = class IntegerHandler {
 		};
 		return result;
 	};
+	static readUint16(buffer, isLittleEndian = false, offset = 0) {
+		this.#ensureU8(buffer);
+		if (offset < 0 || offset + 1 >= buffer.length) {
+			throw(new RangeError(`Invalid offset. (${offset})`));
+		};
+		let result = buffer[offset];
+		if (isLittleEndian) {
+			for (let i = 1; i < 2; i ++) {
+				result |= buffer[offset + i] << (i << 3);
+			};
+		} else {
+			for (let i = 1; i < 2; i ++) {
+				result <<= 8;
+				result |= buffer[offset + i];
+			};
+		};
+		return result;
+	};
+	static readInt16(buffer, isLittleEndian = false, offset = 0) {
+		let result = this.readUint16(buffer, isLittleEndian, offset);
+		if (result >>> 15) {
+			return result - 65536;
+		} else {
+			return result;
+		};
+	};
 	static readInt32(buffer, isLittleEndian = false, offset = 0) {
 		this.#ensureU8(buffer);
 		if (offset < 0 || offset + 3 >= buffer.length) {
@@ -353,7 +379,7 @@ let Seamstress = class Seamstress {
 	};
 	headerSize = 0;
 	type = 0; // 0 for non-reversible SEAM stream, 10 for SMF
-	readStream(stream, bypassRegulator = false) {
+	readStream(stream) {
 		let upThis = this;
 		let skipLength = upThis.headerSize,
 		chunkStart = 0, chunkId = 0,
@@ -599,10 +625,11 @@ let Seamstress = class Seamstress {
 		});
 		return streamHost.readable;
 	};
+	readRegulated(stream) {};
 	readChunks(stream, flushAll = false) {
 		let upThis = this;
 		let streamHost = new StreamQueue();
-		let unbuffered = upThis.readStream(stream, true);
+		let unbuffered = upThis.readStream(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let inProgress = false;
 		let id, chunkId, type, size, context;
