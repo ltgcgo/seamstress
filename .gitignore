@@ -4,6 +4,7 @@
 build
 *.map
 .docker_name
+deno.lock
 dist/*.js
 dist/*.css
 dist/*.ts

@@ -255,6 +255,32 @@ let IntegerHandler = class IntegerHandler {
 			return result;
 		};
 	};
+	static readUint64(buffer, isLittleEndian = false, offset = 0) {
+		this.#ensureU8(buffer);
+		if (offset < 0 || offset + 7 >= buffer.length) {
+			throw(new RangeError(`Invalid offset. (${offset})`));
+		};
+		let result = BigInt(buffer[offset]);
+		if (isLittleEndian) {
+			for (let i = 1; i < 8; i ++) {
+				result |= BigInt(buffer[offset + i]) << BigInt(i << 3);
+			};
+		} else {
+			for (let i = 1; i < 8; i ++) {
+				result <<= 8n;
+				result |= BigInt(buffer[offset + i]);
+			};
+		};
+		return result;
+	};
+	static readInt64(buffer, isLittleEndian = false, offset = 0) {
+		let result = this.readUint64(buffer, isLittleEndian, offset);
+		if (result >> 63n) {
+			return result - 18446744073709551616n;
+		} else {
+			return result;
+		};
+	};
 };
 
 let SeamstressChunk = class SeamstressChunk {
