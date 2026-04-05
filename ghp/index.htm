@@ -14,8 +14,31 @@
         <meta name="robots" content="index,follow" />
         <meta name="keywords" content="Seamstress,Lightingale,MIDI,RIFF,IFF" />
         <link rel="stylesheet" href="./css/bulma.css" />
-        <link rel="stylesheet" href="./css/index.css" />
+        <link rel="stylesheet" href="./css/global.css" />
 </head>
 <body>
-	Polak is cute!
+	<div class="container is-max-desktop">
+		<section class="hero">
+			<div class="hero-body">
+				<p class="title">Seamstress demo</p>
+				<p class="subtitle">Try to import SMF/RIFF/IFF/SEAM files below, and see how Seamstress interprets them.</p>
+			</div>
+		</section>
+		<div class="columns is-multiline is-mobile is-vcentered">
+			<div class="column">
+				<div class="control">
+					<input id="fetchUrl" class="input functional-text" type="text" placeholder="Try to fetch a file from a URL!" value="/midi-data/vendor/yamaha/xgstudio/04Techno.mid">
+				</div>
+			</div>
+			<div class="column column-option">
+				<button id="doFetch" class="button is-link">Fetch!</button>
+			</div>
+			<div class="column column-option">
+				<button id="doOpen" class="button is-info">Open file!</button>
+			</div>
+		</div>
+		<div id="textRenderer" style="font-family:mono;" class="content has-radius-normal has-background-dark has-text-dark-invert px-5 py-4">
+			<p class="verbose-text has-text-info">No binary stream loaded. Polak is cute.</p>
+		</div>
+	</div>
 </body>

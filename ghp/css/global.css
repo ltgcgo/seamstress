@@ -1,0 +1,14 @@
+.column.column-option {
+	max-width: max-content;
+}
+.verbose-text, .functional-text {
+	white-space: pre-wrap;
+	tab-size: 4;
+	word-wrap: anywhere;
+}
+.functional-text {
+	font-family: monospace;
+}
+.contain-overflow {
+	overflow-x: scroll;
+}
