@@ -216,4 +216,4 @@ $e("button#doOpen").addEventListener("mouseup", async function () {
 	};
 });
 
-setTimeout(fetchAction, 2000);
+setTimeout(fetchAction, 5000);
