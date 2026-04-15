@@ -78,6 +78,7 @@ const textConsoleHost = $e("#textRenderer");
 	await textStreamQueue.enqueue([1, "Kristal has declared rulership in the Horni Empire."]);
 })();*/
 
+let isDemoActive = false;
 const typeSelector = $e("select#loaderType");
 const summarizeSeamstressChunk = (sChunk) => {
 	return `#${sChunk.id} (${sChunk.type}, #${sChunk.chunkId}): ${sChunk.offset}/${sChunk.size}, ${sChunk.data.length} B.`;
@@ -93,10 +94,13 @@ const handleBinaryStream = async function (selectedFile) {
 				await textStreamQueue.enqueue([1, `Association for extension "${extensionName}" is not found for: ${selectedFile.name}.`]);
 				return;
 			};
-		} else {
+		} else if (!selectedFile.mode) {
 			await textStreamQueue.enqueue([1, `Invalid extension for name: ${selectedFile.name}.`]);
 			return;
 		};
+	};
+	if (intendedMode !== "auto") {
+		selectedFile.mode = intendedMode;
 	};
 	if (!selectedFile.name) {
 		selectedFile.name = "<internal>";
@@ -105,10 +109,10 @@ const handleBinaryStream = async function (selectedFile) {
 		selectedFile.size = -1;
 	};
 	await textStreamQueue.enqueue([0]);
-	await textStreamQueue.enqueue([4, `Showing the structure of binary stream "${selectedFile.name}" (${selectedFile.size >= 0 ? selectedFile.size : "N/A"} B).\nMode: ${intendedMode}\n`]);
+	await textStreamQueue.enqueue([4, `Showing the structure of binary stream "${selectedFile.name}" (${selectedFile.size >= 0 ? selectedFile.size : "N/A"} B).\nMode: ${selectedFile.mode}`]);
 	try {
 		let map;
-		switch (intendedMode) {
+		switch (selectedFile.mode) {
 			case "smf": {
 				let rawParser = new Seamstress();
 				rawParser.headerSize = 0;
@@ -148,11 +152,11 @@ const handleBinaryStream = async function (selectedFile) {
 				break;
 			};
 			default: {
-				await textStreamQueue.enqueue([1, `Stream type "${intendedMode}" is not yet supported.`]);
+				await textStreamQueue.enqueue([1, `Stream type "${selectedFile.mode}" is not yet supported.`]);
 				return;
 			};
 		};
-		await textStreamQueue.enqueue([127, `Type          No.     Offset      Size`]);
+		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size`]);
 		for (let [key, value] of map.entries()) {
 			let showKey = key;
 			if (typeof key === "number") {
@@ -169,12 +173,34 @@ const handleBinaryStream = async function (selectedFile) {
 				count ++;
 			};
 		};
+		isDemoActive = true;
 	} catch (err) {
 		await textStreamQueue.enqueue([1, `Uncaught ${err.name}: ${err.message ?? "No error message was provided."}\n${err.stack}`]);
 		console.error(err);
 	};
 };
-$e("button#doFetch");
+const fetchAction = async function () {
+	const fetchUrl = $e("input#fetchUrl").value;
+	await textStreamQueue.enqueue([0]);
+	await textStreamQueue.enqueue([4, `Waiting for the response from URL: ${fetchUrl}`])
+	let resp = await fetch(fetchUrl);
+	let passedObject = {
+		size: -1,
+		stream: resp.body
+	};
+	if (resp.headers.has("Content-Length")) {
+		passedObject.size = parseInt(resp.headers.get("Content-Length"));
+	};
+	if (resp.headers.has("Content-Type")) {
+		passedObject.mode = mimeTypes[resp.headers.get("Content-Type")] ?? "unknown";
+	};
+	try {
+		await handleBinaryStream(passedObject);
+	} catch (err) {
+		await textStreamQueue.enqueue([1, `Uncaught ${err.name}: ${err.message ?? "No error message was provided."}\n${err.stack}`]);
+	};
+};
+$e("button#doFetch").addEventListener("mouseup", fetchAction);
 $e("button#doOpen").addEventListener("mouseup", async function () {
 	let selectedFile = await fileOpen(fileProps);
 	if (selectedFile) {
@@ -189,3 +215,5 @@ $e("button#doOpen").addEventListener("mouseup", async function () {
 		};
 	};
 });
+
+setTimeout(fetchAction, 2000);
