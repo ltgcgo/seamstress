@@ -111,44 +111,24 @@ const handleBinaryStream = async function (selectedFile) {
 	await textStreamQueue.enqueue([0]);
 	await textStreamQueue.enqueue([4, `Showing the structure of binary stream "${selectedFile.name}" (${selectedFile.size >= 0 ? selectedFile.size : "N/A"} B).\nMode: ${selectedFile.mode}`]);
 	try {
-		let map;
+		let rawParser = new Seamstress();
 		switch (selectedFile.mode) {
 			case "smf": {
-				let rawParser = new Seamstress();
 				rawParser.headerSize = 0;
 				rawParser.type = Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32;
 				rawParser.debugMode = true;
-				let splitStream = selectedFile.stream.tee();
-				(async () => {
-					for await (let chunk of rawParser.readChunks(splitStream[1])) {
-						console.debug(summarizeSeamstressChunk(chunk));
-					};
-					console.info("Finished chunk skimming.");
-				})();
-				map = await rawParser.getMapFromStream(splitStream[0]);
 				break;
 			};
 			case "iff": {
-				let rawParser = new Seamstress();
 				rawParser.headerSize = 12;
 				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_B | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
 				rawParser.debugMode = true;
-				map = await rawParser.getMapFromStream(selectedFile.stream);
 				break;
 			};
 			case "riff": {
-				let rawParser = new Seamstress();
 				rawParser.headerSize = 12;
 				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_L | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
 				rawParser.debugMode = true;
-				let splitStream = selectedFile.stream.tee();
-				(async () => {
-					for await (let chunk of rawParser.readChunks(splitStream[1])) {
-						console.debug(summarizeSeamstressChunk(chunk));
-					};
-					console.info("Finished chunk skimming.");
-				})();
-				map = await rawParser.getMapFromStream(splitStream[0]);
 				break;
 			};
 			default: {
@@ -157,23 +137,22 @@ const handleBinaryStream = async function (selectedFile) {
 			};
 		};
 		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size`]);
-		for (let [key, value] of map.entries()) {
-			let showKey = key;
+		isDemoActive = true;
+		for await (let chunk of rawParser.readChunks(selectedFile.stream)) {
+			console.debug(summarizeSeamstressChunk(chunk));
+			let showKey = chunk.type;
 			if (typeof key === "number") {
-				showKey = `0x${key.toString(16)}`;
+				showKey = `0x${chunk.type.toString(16)}`;
 			};
 			showKey = showKey.padEnd(10, " ");
-			let count = 1;
-			for (let [offset, size] of value) {
-				if (count === 1) {
-					await textStreamQueue.enqueue([127, `${showKey}  - #${`${count}`.padStart(4, "0")}   0x${offset.toString(16).padStart(8, "0")}  ${size} B`]);
-				} else {
-					await textStreamQueue.enqueue([127, `            - #${`${count}`.padStart(4, "0")}   0x${offset.toString(16).padStart(8, "0")}  ${size} B`]);
-				};
-				count ++;
+			if (chunk.chunkId > 0) {
+				await textStreamQueue.enqueue([127, `            - #${`${chunk.chunkId + 1}`.padStart(4, "0")}   0x${chunk.offsetData.toString(16).padStart(8, "0")}  ${chunk.size} B`]);
+			} else {
+				await textStreamQueue.enqueue([127, `${showKey}  - #${"1".padStart(4, "0")}   0x${chunk.offsetData.toString(16).padStart(8, "0")}  ${chunk.size} B`]);
 			};
 		};
-		isDemoActive = true;
+		console.info("Finished chunk skimming.");
+		await textStreamQueue.enqueue([3, `\nReading finished.`]);
 	} catch (err) {
 		await textStreamQueue.enqueue([1, `Uncaught ${err.name}: ${err.message ?? "No error message was provided."}\n${err.stack}`]);
 		console.error(err);
@@ -216,4 +195,8 @@ $e("button#doOpen").addEventListener("mouseup", async function () {
 	};
 });
 
-setTimeout(fetchAction, 5000);
+setTimeout(async () => {
+	if (!isDemoActive) {
+		fetchAction();
+	};
+}, 5000);

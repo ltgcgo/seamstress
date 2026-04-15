@@ -74,6 +74,8 @@ export interface SeamstressChunk {
 	type: number|string;
 	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to 0. */
 	offset: number;
+	/** The offset of the current data (sub)chunk compared to the rest of the binary stream. */
+	offsetData: number;
 	/** The full size of the current chunk. */
 	size: number;
 	/** When `true`, the current (streamed) chunk is the last subchunk of the full chunk. Fully buffered chunks always has this value set to `true`. */
