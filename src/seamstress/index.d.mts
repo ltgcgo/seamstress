@@ -172,8 +172,8 @@ export class Seamstress {
 	*/
 	headerHandler?(buffer: Uint8Array): SeamstressContext|undefined;
 	/**
-	* (WIP) Regulates the incoming stream. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader, with the truncated buffer prepended to the next stream chunk.
-	* When returning any non-positive integer, the chunk will not be truncated in any way, and the rest of the stream chunk for the current chunk will bypass the regulator method altogether. Returning an integer that's larger than the size of the current stream chunk, the whole chunk will be buffered and wait for merging with the next chunk. If a chunk contains many subchunks, this method will help ensure that the incomplete chunks received will always contain complete subchunks.
+	* (WIP) Regulates the incoming stream into desired subchunks. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader.
+	* A non-zero value will cause the specified length from the current subchunk to be emitted, which the process repeats until the current subchunk depletes or the method returns a zero. A zero cause the current remaining section to be buffered and prepended to the next subchunk, until the entire chunk ends causing a forced flush, essentially making an all-zero regulated stream a fully-buffered stream. Any other numeric values will cause an error.
 	*/
 	regulateStream?(chunkInfo: SeamstressChunk): number;
 	/**
