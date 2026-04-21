@@ -70,7 +70,7 @@ let IntegerHandler = class IntegerHandler {
 				return i + 1;
 			};
 		};
-		return 0; // Failure
+		return 0; // Failure.
 	};
 	static readRVLV(buffer, offset = 0) {
 		this.#ensureU8(buffer);
@@ -184,6 +184,7 @@ let IntegerHandler = class IntegerHandler {
 			};
 			storedState = currentState;
 		};
+		return 0; // Failure.
 	};
 	static readBool(buffer, offset = 0) {
 		this.#ensureU8(buffer);
@@ -501,7 +502,7 @@ let Seamstress = class Seamstress {
 									if (rvlvState === IntegerHandler.RVLV_SINGLE) {
 										readState = 4;
 										ptr ++;
-										continue;
+										break;
 									} else if (rvlvState !== IntegerHandler.RVLV_START) {
 										throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
 									};
@@ -550,7 +551,7 @@ let Seamstress = class Seamstress {
 									if (rvlvState === IntegerHandler.RVLV_SINGLE) {
 										readState = 8;
 										ptr ++;
-										continue;
+										break;
 									} else if (rvlvState !== IntegerHandler.RVLV_START) {
 										throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
 									};
