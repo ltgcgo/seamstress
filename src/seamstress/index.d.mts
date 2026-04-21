@@ -174,8 +174,10 @@ export class Seamstress {
 	/**
 	* (WIP) Regulates the incoming stream into desired subchunks. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader.
 	* A non-zero value will cause the specified length from the current subchunk to be emitted, which the process repeats until the current subchunk depletes or the method returns a zero. A zero cause the current remaining section to be buffered and prepended to the next subchunk, until the entire chunk ends causing a forced flush, essentially making an all-zero regulated stream a fully-buffered stream. Any other numeric values will cause an error.
+	* @param startOffset The intended read start offset of the provided buffer.
+	* @param chunkInfo The unmodified info of the current (sub)chunk.
 	*/
-	regulateStream?(chunkInfo: SeamstressChunk): number;
+	regulateStream?(startOffset: number, chunkInfo: SeamstressChunk): number;
 	/**
 	* Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered.
 	* @param bypassRegulator When true, the stream chunk regulation method will never be called.
@@ -184,7 +186,7 @@ export class Seamstress {
 	/**
 	* (WIP) Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered, however when the regulator is present, it can be used to ensure that the partial structure of each (in)complete subchunk will be intact. The stream chunk regulation method will be called on each incomplete chunk to regulate the sizes. The final subchunk of each chunk will not have the regulator called. If there is no regulator, this method will error out immediately.
 	*/
-	readRegulated(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): ReadableStream<SeamstressChunk>;
+	readRegulated(stream: ReadableStream<Uint8Array|Uint8ClampedArray>, flushAll?: boolean): ReadableStream<SeamstressChunk>;
 	/**
 	* Reads the incoming stream, and emits a stream of fully buffered chunks.
 	* @param flushAll When true, unfinished chunks will also be flushed instead of discarded.

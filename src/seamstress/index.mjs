@@ -656,7 +656,52 @@ let Seamstress = class Seamstress {
 		});
 		return streamHost.readable;
 	};
-	readRegulated(stream) {};
+	regulateStream;
+	readRegulated(stream, flushAll = false) {
+		let upThis = this;
+		if (typeof upThis.regulateStream !== "function") {
+			throw(new TypeError("The stream regulator must be a defined function."));
+		};
+		let streamHost = new StreamQueue();
+		let unbuffered = upThis.readStream(stream);
+		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
+		let id, chunkId, type, size, context, offsetData;
+		(async () => {
+			for await (let unbufferedChunk of unbuffered) {
+				let inChunkPtr = 0;
+				while (inChunkPtr < unbufferedChunk.data.length) {
+					let readLength = upThis.regulateStream(inChunkPtr, unbufferedChunk),
+					remainingSize = unbufferedChunk.data.length - inChunkPtr;
+					if (readLength > remainingSize) {
+						throw(new RangeError(`Instructed read length ${readLength} exceeds the boundary of the current subchunk.`));
+					} else if (readLength > 0) {
+						inChunkPtr += readLength;
+					} else if (readLength === 0) {
+						if (unbufferedChunk.isFinal) {} else {};
+						break;
+					} else {
+						throw(new Error(`Instructed read length is invalid.`));
+					};
+				};
+			};
+			if (buffer.length > 0) {
+				if (flushAll) {
+					let bufferedChunk = new SeamstressChunk(id, chunkId, type, 0, size);
+					bufferedChunk.data = upThis.#mergeBuffer(buffer);
+					bufferedChunk.offsetData = offsetData;
+					buffer.splice(0);
+					bufferedChunk.context = context;
+					await streamHost.enqueue(bufferedChunk);
+				} else {
+					console.warn(`Incoming stream may have ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
+				};
+			};
+			streamHost.close();
+		})().catch((err) => {
+			streamHost.error(err);
+		});
+		return streamHost.readable;
+	};
 	readChunks(stream, flushAll = false) {
 		let upThis = this;
 		let streamHost = new StreamQueue();
