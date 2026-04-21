@@ -407,6 +407,7 @@ let Seamstress = class Seamstress {
 	};
 	headerSize = 0;
 	type = 0; // 0 for non-reversible SEAM stream, 10 for SMF
+	headerHandler;
 	readStream(stream) {
 		let upThis = this;
 		let skipLength = upThis.headerSize,
@@ -455,6 +456,7 @@ let Seamstress = class Seamstress {
 						seamChunkId ++;
 					} else {
 						upThis.debugMode && console.debug(`Committed the entire buffer as a header chunk, size ${skipLength} B.`);
+						seamContext = upThis.headerHandler(chunk);
 						isHeaderRead = true;
 					};
 					skipLength = 0;
@@ -471,6 +473,7 @@ let Seamstress = class Seamstress {
 						seamChunkId ++;
 					} else {
 						upThis.debugMode && console.debug(`Committed the buffer as a header chunk, size ${skipLength} B.`);
+						seamContext = upThis.headerHandler(chunk.subarray(0, skipLength));
 						isHeaderRead = true;
 					};
 				};

@@ -166,7 +166,7 @@ export class Seamstress {
 	headerSize: number;
 	/** The type flags of the Seamstress instance. */
 	type: number;
-	/** (WIP) Handles the header chunk. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
+	/** Handles the header chunk. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
 	* @param buffer The header getting passed into the handler.
 	* @returns The parsed object that will modify the reader behaviour and provide as the initial context for the streams.
 	*/
