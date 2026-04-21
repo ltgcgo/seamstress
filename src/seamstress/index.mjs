@@ -667,7 +667,7 @@ let Seamstress = class Seamstress {
 		let unbuffered = upThis.readStream(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let id, chunkId, type, size, context;
-		let offset = 0, offsetData = 0;
+		let isOffsetWritten = false, offset = 0, offsetData = 0;
 		(async () => {
 			for await (let unbufferedChunk of unbuffered) {
 				({id, chunkId, type, size, context} = unbufferedChunk);
@@ -687,6 +687,7 @@ let Seamstress = class Seamstress {
 							buffer.splice(0, buffer.length);
 							offset = 0;
 							offsetData = 0;
+							isOffsetWritten = false;
 						} else {
 							subChunk.data = unbufferedChunk.data.subarray(inChunkPtr, inChunkPtr + readLength);
 						};
@@ -702,11 +703,13 @@ let Seamstress = class Seamstress {
 							buffer.splice(0, buffer.length);
 							offset = 0;
 							offsetData = 0;
+							isOffsetWritten = false;
 							await streamHost.enqueue(subChunk);
 						} else {
-							if (offsetData === 0) {
+							if (isOffsetWritten === false) {
 								offset = unbufferedChunk.offset + inChunkPtr;
 								offsetData = unbufferedChunk.offsetData + inChunkPtr;
+								isOffsetWritten = true;
 							};
 							buffer.push(unbufferedChunk.data.subarray(inChunkPtr));
 						};
