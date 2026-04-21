@@ -418,8 +418,13 @@ let Seamstress = class Seamstress {
 		isHeaderRead = upThis.headerSize === 0;
 		let seamChunkId = 0, seamChunkMap = new Map(),
 		seamContext = (upThis.headerSize > 0 && upThis.headerHandler !== undefined) ? undefined : {};
-		if (upThis.headerSize > 0 && upThis.headerHandler !== undefined && typeof upThis.headerHandler !== "function") {
-			throw(new TypeError("Seamstress.headerHandler must be a function."));
+		let headerBuffer;
+		if (upThis.headerSize > 0) {
+			if (upThis.headerHandler !== undefined && typeof upThis.headerHandler !== "function") {
+				throw(new TypeError("Seamstress.headerHandler must be a function."));
+			} else {
+				headerBuffer = [];
+			};
 		};
 		let streamHost = new StreamQueue();
 		//streamHost.debugMode = true;
@@ -437,11 +442,16 @@ let Seamstress = class Seamstress {
 				};
 				let dPrefix = `Stream chunk ${chunkId}`;
 				if (skipLength > chunk.length) {
-					let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
-					subchunkData.data = chunk;
-					subchunkData.offsetData = chunkStart;
-					await streamHost.enqueue(subchunkData);
-					upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should buffer the entire chunk.`);
+					if (isHeaderRead) {
+						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
+						subchunkData.data = chunk;
+						subchunkData.offsetData = chunkStart;
+						subchunkData.context = seamContext;
+						await streamHost.enqueue(subchunkData);
+						upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should buffer the entire chunk.`);
+					} else {
+						headerBuffer.push(chunk);
+					};
 					skipLength -= chunk.length;
 					chunkStart += chunk.length;
 					continue;
@@ -451,12 +461,15 @@ let Seamstress = class Seamstress {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
 						subchunkData.data = chunk;
 						subchunkData.offsetData = chunkStart;
+						subchunkData.context = seamContext;
 						await streamHost.enqueue(subchunkData);
 						upThis.debugMode && console.debug(`Committed the entire buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
 					} else {
 						upThis.debugMode && console.debug(`Committed the entire buffer as a header chunk, size ${skipLength} B.`);
-						seamContext = upThis.headerHandler(chunk);
+						headerBuffer.push(chunk);
+						seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer)) ?? {};
+						headerBuffer = undefined;
 						isHeaderRead = true;
 					};
 					skipLength = 0;
@@ -468,12 +481,15 @@ let Seamstress = class Seamstress {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
 						subchunkData.data = chunk.subarray(0, skipLength);
 						subchunkData.offsetData = chunkStart;
+						subchunkData.context = seamContext;
 						await streamHost.enqueue(subchunkData);
 						upThis.debugMode && console.debug(`Committed the buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
 					} else {
 						upThis.debugMode && console.debug(`Committed the buffer as a header chunk, size ${skipLength} B.`);
-						seamContext = upThis.headerHandler(chunk.subarray(0, skipLength));
+						headerBuffer.push(chunk.subarray(0, skipLength));
+						seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer)) ?? {};
+						headerBuffer = undefined;
 						isHeaderRead = true;
 					};
 				};
@@ -628,6 +644,7 @@ let Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
 							subchunkData.offsetData = chunkStart + ptr;
+							subchunkData.context = seamContext;
 							await streamHost.enqueue(subchunkData);
 							upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a complete chunk "${chunkType}" (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 							ptr += skipLength;
@@ -637,6 +654,7 @@ let Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							subchunkData.data = chunk.subarray(ptr);
 							subchunkData.offsetData = chunkStart + ptr;
+							subchunkData.context = seamContext;
 							await streamHost.enqueue(subchunkData);
 							upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a potentially incomplete chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}) "${chunkType}", size ${chunk.length - ptr} B.`);
 							skipLength += ptr - chunk.length;
