@@ -180,7 +180,6 @@ export class Seamstress {
 	regulateStream?(startOffset: number, chunkInfo: SeamstressChunk): number;
 	/**
 	* Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered.
-	* @param bypassRegulator When true, the stream chunk regulation method will never be called.
 	*/
 	readStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): ReadableStream<SeamstressChunk>;
 	/**

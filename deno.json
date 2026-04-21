@@ -1,6 +1,6 @@
 {
 	"name": "@ltgc/seamstress",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"license": "LGPL-3.0-only",
 	"exports": {
 		".": "./dist/seamstress.d.mts"
