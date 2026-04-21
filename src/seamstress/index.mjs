@@ -288,11 +288,12 @@ let SeamstressChunk = class SeamstressChunk {
 	chunkId = 0;
 	type = undefined;
 	offset = 0;
+	offsetData = 0;
 	size = 0;
 	data = undefined;
 	context = undefined;
 	get isFinal() {
-		if (this.data.length + this.offset === size) {
+		if (this.data.length + this.offset === this.size) {
 			return true;
 		};
 		return false;
@@ -300,7 +301,7 @@ let SeamstressChunk = class SeamstressChunk {
 	get isBuffered() {
 		if (
 			this.offset === 0 &&
-			this.data.length === size
+			this.data.length === this.size
 		) {
 			return true;
 		};
@@ -312,7 +313,7 @@ let SeamstressChunk = class SeamstressChunk {
 		} else {
 			throw(new TypeError(`Provided invalid value for "id". Must be a non-negative integer.`));
 		};
-		if (typeof chunkId === "number" && id >= 0) {
+		if (typeof chunkId === "number" && chunkId >= 0) {
 			this.chunkId = chunkId;
 		} else {
 			throw(new TypeError(`Provided invalid value for "chunkId". Must be a non-negative integer.`));
@@ -665,9 +666,11 @@ let Seamstress = class Seamstress {
 		let streamHost = new StreamQueue();
 		let unbuffered = upThis.readStream(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
-		let id, chunkId, type, size, context, offsetData;
+		let id, chunkId, type, size, context;
+		let offset = 0, offsetData = 0;
 		(async () => {
 			for await (let unbufferedChunk of unbuffered) {
+				({id, chunkId, type, size, context} = unbufferedChunk);
 				let inChunkPtr = 0;
 				while (inChunkPtr < unbufferedChunk.data.length) {
 					let readLength = upThis.regulateStream(inChunkPtr, unbufferedChunk),
@@ -675,9 +678,38 @@ let Seamstress = class Seamstress {
 					if (readLength > remainingSize) {
 						throw(new RangeError(`Instructed read length ${readLength} exceeds the boundary of the current subchunk.`));
 					} else if (readLength > 0) {
+						let subChunk = new SeamstressChunk(id, chunkId, type, unbufferedChunk.offset + inChunkPtr, size);
+						subChunk.offsetData = unbufferedChunk.offsetData + inChunkPtr;
+						subChunk.context = context;
+						if (buffer.length > 0) {
+							buffer.push(unbufferedChunk.data.subarray(inChunkPtr, inChunkPtr + readLength));
+							subChunk.data = upThis.#mergeBuffer(buffer);
+							buffer.splice(0, buffer.length);
+							offset = 0;
+							offsetData = 0;
+						} else {
+							subChunk.data = unbufferedChunk.data.subarray(inChunkPtr, inChunkPtr + readLength);
+						};
+						await streamHost.enqueue(subChunk);
 						inChunkPtr += readLength;
 					} else if (readLength === 0) {
-						if (unbufferedChunk.isFinal) {} else {};
+						if (unbufferedChunk.isFinal) {
+							let subChunk = new SeamstressChunk(id, chunkId, type, unbufferedChunk.offset + inChunkPtr, size);
+							subChunk.offsetData = unbufferedChunk.offsetData + inChunkPtr;
+							subChunk.context = context;
+							buffer.push(unbufferedChunk.data.subarray(inChunkPtr));
+							subChunk.data = upThis.#mergeBuffer(buffer);
+							buffer.splice(0, buffer.length);
+							offset = 0;
+							offsetData = 0;
+							await streamHost.enqueue(subChunk);
+						} else {
+							if (offsetData === 0) {
+								offset = unbufferedChunk.offset + inChunkPtr;
+								offsetData = unbufferedChunk.offsetData + inChunkPtr;
+							};
+							buffer.push(unbufferedChunk.data.subarray(inChunkPtr));
+						};
 						break;
 					} else {
 						throw(new Error(`Instructed read length is invalid.`));
@@ -686,7 +718,7 @@ let Seamstress = class Seamstress {
 			};
 			if (buffer.length > 0) {
 				if (flushAll) {
-					let bufferedChunk = new SeamstressChunk(id, chunkId, type, 0, size);
+					let bufferedChunk = new SeamstressChunk(id, chunkId, type, offset, size);
 					bufferedChunk.data = upThis.#mergeBuffer(buffer);
 					bufferedChunk.offsetData = offsetData;
 					buffer.splice(0);
