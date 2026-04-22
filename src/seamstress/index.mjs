@@ -706,7 +706,7 @@ let Seamstress = class Seamstress {
 						if (buffer.length > 0) {
 							buffer.push(unbufferedChunk.data.subarray(inChunkPtr, inChunkPtr + readLength));
 							subChunk.data = upThis.#mergeBuffer(buffer);
-							buffer.splice(0, buffer.length);
+							buffer.splice(0);
 							offset = 0;
 							offsetData = 0;
 							isOffsetWritten = false;
@@ -722,7 +722,7 @@ let Seamstress = class Seamstress {
 							subChunk.context = context;
 							buffer.push(unbufferedChunk.data.subarray(inChunkPtr));
 							subChunk.data = upThis.#mergeBuffer(buffer);
-							buffer.splice(0, buffer.length);
+							buffer.splice(0);
 							offset = 0;
 							offsetData = 0;
 							isOffsetWritten = false;
