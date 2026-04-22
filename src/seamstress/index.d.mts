@@ -11,16 +11,24 @@
 * Reading and writing various forms of numeric values.
 */
 export class IntegerHandler {
+	/**
+	* When set to true, methods will use runtime-native APIs and WebAssembly over the pure-JS implementation.
+	*/
+	static useNative: bool;
+	/**
+	* When set to true, methods will no longer conduct type checks. Usually has negligible performance impact unless on poorly-optimized runtimes.
+	*/
+	static unsafeType: bool;
 	/** Reads a standard MIDI VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a standard JavaScript number. Will be clamped to 4 bytes, after which it will error out. */
 	static readVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads a standard MIDI VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a BigInt. Will be clamped to 16 bytes, after which it will error out. */
-	static readVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): BigInt;
+	static readVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): bigint;
 	/** Counts the size of a standard MIDI VLV-8 value in bytes. Will return 0 when failed. */
 	static sizeVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads a reversible VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a standard JavaScript number. Will be clamped to 4 bytes, after which it will error out. Invalid RVLV values will also error out. */
 	static readRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads a reversible VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a BigInt. Will be clamped to 16 bytes, after which it will error out. Invalid RVLV values will also error out. */
-	static readRVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): BigInt;
+	static readRVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): bigint;
 	/** Counts the size of a reversible VLV-8 value in bytes. Will return 0 when failed. */
 	static sizeRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads a boolean. Will error out if out of bounds. One byte has 8 individual bits. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
@@ -36,9 +44,9 @@ export class IntegerHandler {
 	/** Reads a uint32 value. Will error out if out of bounds. */
 	static readUint32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
 	/** Reads an int64 value. Will error out if out of bounds. */
-	static readInt64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): BigInt;
+	static readInt64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
 	/** Reads a uint64 value. Will error out if out of bounds. */
-	static readUint64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): BigInt;
+	static readUint64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
 }
 
 /**
