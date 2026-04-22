@@ -15,7 +15,7 @@ let IntegerHandler = class IntegerHandler {
 	static RVLV_END = 64;
 	static RVLV_SINGLE = 0;
 	static #unsafeType = false;
-	static useNative = false;
+	static useNative = true;
 	static #hiddenDataView = Symbol("Key for the hidden DataView.");
 	static #ensureU8Unsafe() {};
 	static #ensureU8Safe(buffer) {
