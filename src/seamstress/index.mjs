@@ -14,10 +14,18 @@ let IntegerHandler = class IntegerHandler {
 	static RVLV_MIDDLE = 128;
 	static RVLV_END = 64;
 	static RVLV_SINGLE = 0;
+	static useDataView = false;
+	static #hiddenDataView = Symbol("Key for the hidden DataView.");
 	static #ensureU8(buffer) {
 		if (buffer.constructor !== Uint8Array && buffer.constructor !== Uint8ClampedArray) {
 			throw(new TypeError("Input must be a Uint8Array."));
 		};
+	};
+	static #obtainDataView(typedArray) {
+		if (!Object.hasOwn(typedArray, this.#hiddenDataView)) {
+			typedArray[this.#hiddenDataView] = new DataView(typedArray.buffer);
+		};
+		return typedArray[this.#hiddenDataView];
 	};
 	static readVLV(buffer, offset = 0) {
 		// VLV-8 are all big-endian.
