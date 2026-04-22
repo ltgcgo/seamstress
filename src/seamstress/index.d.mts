@@ -23,7 +23,7 @@ export class IntegerHandler {
 	static readRVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): BigInt;
 	/** Counts the size of a reversible VLV-8 value in bytes. Will return 0 when failed. */
 	static sizeRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads a boolean. Will error out if out of bounds. A 1-sized array has 8 boolean values, 2-sized has 16, and vice versa. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
+	/** Reads a boolean. Will error out if out of bounds. One byte has 8 individual bits. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
 	static readBool(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads an int8 value. Will error out if out of bounds. */
 	static readInt8(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
@@ -115,7 +115,7 @@ export class SeamstressStrictWriter {
 }
 
 /**
-* An insanely safe TLV reader and writer. Configure an instance to match the format you want to handle, then use the methods provided.
+* A safe TLV reader and writer. Configure an instance to match the format you want to handle, then use the methods provided.
 * ```js
 * let binaryParser = new Seamstress();
 * // Configure Seamstress to handle Standard MIDI Files.
@@ -166,13 +166,13 @@ export class Seamstress {
 	headerSize: number;
 	/** The type flags of the Seamstress instance. */
 	type: number;
-	/** Handles the header chunk. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
+	/** Handles the header chunk, specified manually. Called by all stream readers. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
 	* @param buffer The header getting passed into the handler.
 	* @returns The parsed object that will modify the reader behaviour and provide as the initial context for the streams.
 	*/
 	headerHandler?(buffer: Uint8Array): SeamstressContext|undefined;
 	/**
-	* Regulates the incoming stream into desired subchunks. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader.
+	* Regulates the incoming stream into desired subchunks, specified manually. Called by `Seamstress.regulateStream()`. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader.
 	* A non-zero value will cause the specified length from the current subchunk to be emitted, which the process repeats until the current subchunk depletes or the method returns a zero. A zero cause the current remaining section to be buffered and prepended to the next subchunk, until the entire chunk ends causing a forced flush, essentially making an all-zero regulated stream a fully-buffered stream. Any other numeric values will cause an error.
 	* @param startOffset The intended read start offset of the provided buffer.
 	* @param chunkInfo The unmodified info of the current (sub)chunk.
