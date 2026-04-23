@@ -11,6 +11,7 @@ dist/*.ts
 dist/*.mts
 dist/*.htm
 dist/*.html
+dist/*.wasm
 
 ghp-gz
 ghp-br

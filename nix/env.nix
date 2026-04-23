@@ -28,6 +28,7 @@ pkgs.mkShell {
 		lightningcss
 		esbuild
 		minify
+		wabt
 	];
 	GIT_EDITOR = "${pkgs.nano}/bin/nano";
 	shellHook = ''

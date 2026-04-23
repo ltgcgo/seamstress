@@ -22,5 +22,8 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1.1.4
 
+      - name: Setup WABT
+        run: "sudo apt install wabt"
+
       - name: Publish package
         run: "./shx publish"

@@ -220,10 +220,12 @@ let IntegerHandler = class IntegerHandler {
 	};
 	static readBool(buffer, offset = 0) {
 		this.#ensureU8(buffer);
-		if (offset < 0 || offset > 4294967295 || (offset >>> 3) >= buffer.length) {
-			throw(new RangeError(`Invalid binary offset. (${offset})`));
+		if (this.useNative) {} else {
+			if (this.#ensureU8 && (offset < 0 || offset > 4294967295 || (offset >>> 3) >= buffer.length)) {
+				throw(new RangeError(`Invalid binary offset. (${offset})`));
+			};
+			return (buffer[offset >> 3] >> (offset & 7) & 1);
 		};
-		return (buffer[offset >> 3] >> (offset & 7) & 1) !== 0;
 	};
 	static readInt8(buffer, offset = 0) {
 		if (this.useNative) {
