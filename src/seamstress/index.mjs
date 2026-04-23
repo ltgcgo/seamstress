@@ -7,6 +7,15 @@ import {
 	StreamQueue
 } from "../../libs/rochelle@ltgcgo/splicer.mjs";
 
+/*import wasmBinary from "../../dist/seamstress.wasm" with {type: "bytes"};
+
+let wasmExports;
+if (self.WebAssembly) {(async () => {
+	let {module, instance} = await WebAssembly.instantiate(wasmBinary);
+	wasmExports = instance.exports;
+	console.debug(wasmExports);
+})()};*/
+
 let IntegerHandler = class IntegerHandler {
 	static MASK_VLV = 128;
 	static MASK_RVLV = 192;
@@ -219,13 +228,15 @@ let IntegerHandler = class IntegerHandler {
 		return 0; // Failure.
 	};
 	static readBool(buffer, offset = 0) {
-		this.#ensureU8(buffer);
-		if (this.useNative) {} else {
+		/*if (this.useNative && wasmExports) {
+			return wasmExports.readBitAt(buffer[offset >> 3], offset);
+		} else {*/
+			this.#ensureU8(buffer);
 			if (this.#ensureU8 && (offset < 0 || offset > 4294967295 || (offset >>> 3) >= buffer.length)) {
 				throw(new RangeError(`Invalid binary offset. (${offset})`));
 			};
-			return (buffer[offset >> 3] >> (offset & 7) & 1);
-		};
+			return buffer[offset >> 3] >> (offset & 7) & 1;
+		//};
 	};
 	static readInt8(buffer, offset = 0) {
 		if (this.useNative) {
