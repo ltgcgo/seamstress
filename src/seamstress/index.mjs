@@ -227,7 +227,7 @@ let IntegerHandler = class IntegerHandler {
 	};
 	static readInt8(buffer, offset = 0) {
 		if (this.useNative) {
-			return this.#obtainDataView(buffer).getInt8(offset, isLittleEndian);
+			return this.#obtainDataView(buffer).getInt8(offset);
 		} else {
 			this.#ensureU8(buffer);
 			if (offset < 0 || offset >= buffer.length) {
