@@ -4,7 +4,7 @@
 /**
 * A safe tag-length-value byte stream handler. Can be customized to handle SMF, IFF, RIFF and more, under the umbrella of SEAM (Simple Extensible Arbitrary Messaging).
 * @license LGPL-3.0-only
-* @module
+* @module cc.ltgc.seamstress
 */
 
 /**
