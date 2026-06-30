@@ -541,7 +541,10 @@ let Seamstress = class Seamstress {
 					} else {
 						upThis.debugMode && console.debug(`Committed the entire buffer as a header chunk, size ${skipLength} B.`);
 						headerBuffer.push(chunk);
-						seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer)) ?? {};
+						if (typeof upThis.headerHandler === "function") {
+							upThis.headerHandler(upThis.#mergeBuffer(headerBuffer));
+						};
+						seamContext = seamContext ?? {};
 						headerBuffer = undefined;
 						isHeaderRead = true;
 					};
@@ -561,7 +564,10 @@ let Seamstress = class Seamstress {
 					} else {
 						upThis.debugMode && console.debug(`Committed the buffer as a header chunk, size ${skipLength} B.`);
 						headerBuffer.push(chunk.subarray(0, skipLength));
-						seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer)) ?? {};
+						if (typeof upThis.headerHandler === "function") {
+							upThis.headerHandler(upThis.#mergeBuffer(headerBuffer));
+						};
+						seamContext = seamContext ?? {};
 						headerBuffer = undefined;
 						isHeaderRead = true;
 					};
@@ -729,6 +735,9 @@ let Seamstress = class Seamstress {
 						} else {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							subchunkData.data = chunk.subarray(ptr);
+							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
+								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+							};
 							subchunkData.offsetData = chunkStart + ptr;
 							subchunkData.context = seamContext;
 							await streamHost.enqueue(subchunkData);

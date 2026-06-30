@@ -9,7 +9,7 @@ import {
 } from "../../libs/rochelle@ltgcgo/splicer.mjs";
 import {
 	$e, $a
-} from "../../libs/lightfelt@ltgcgo/main/quickPath";
+} from "../../libs/lightfelt@ltgcgo/main/quickPath.js";
 import {fileOpen} from "../../libs/browser-fs-access@GoogleChromeLabs/browser_fs_access.min.js";
 
 const fileProps = JSON.parse('{"extensions":[],"startIn":"pictures","id":"binOpener","description":"Open a file in a tag-length-value structure."}');
@@ -23,6 +23,7 @@ const fileTypes = {
 	"sf2": "riff",
 	"wav": "riff",
 	"webp": "riff",
+	"m2a": "riff",
 	"rseam": "rseam",
 	"vseam": "vseam"
 };
@@ -138,7 +139,7 @@ const handleBinaryStream = async function (selectedFile) {
 		};
 		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size`]);
 		isDemoActive = true;
-		for await (let chunk of rawParser.readChunks(selectedFile.stream)) {
+		for await (let chunk of rawParser.readChunks(selectedFile.stream, true)) {
 			console.debug(summarizeSeamstressChunk(chunk));
 			let showKey = chunk.type;
 			if (typeof key === "number") {
