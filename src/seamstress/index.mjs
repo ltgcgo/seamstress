@@ -725,6 +725,9 @@ let Seamstress = class Seamstress {
 						if (skipLength + ptr < chunk.length) {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
+							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
+								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+							};
 							subchunkData.offsetData = chunkStart + ptr;
 							subchunkData.context = seamContext;
 							await streamHost.enqueue(subchunkData);

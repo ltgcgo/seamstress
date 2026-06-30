@@ -7,7 +7,6 @@ const StreamQueue = class StreamQueue {
 	#controller;
 	#pullPromise;
 	#closedResolve;
-	#isBusy = false;
 	debugMode = false;
 	closed = false;
 	closure;
@@ -58,7 +57,6 @@ const StreamQueue = class StreamQueue {
 				});
 			},
 			"pull": async (controller) => {
-				upThis.#isBusy = false;
 				enqueueResolve();
 				upThis.#pullPromise = new Promise((p, r) => {
 					enqueueResolve = p;
@@ -69,21 +67,28 @@ const StreamQueue = class StreamQueue {
 		}, queuingStrategy);
 	};
 	enqueue(chunk) {
-		if (this.#isBusy) {
-			throw(new Error("Tried to enqueue data without backpressure relief."));
+		if (this.closed) {
+			throw(new Error("The stream is closed."));
 		};
 		this.#controller.enqueue(chunk);
-		this.#isBusy = true;
 		return this.#pullPromise;
 	};
 	close() {
 		let upThis = this;
+		if (upThis.closed) {
+			console.debug("The stream has already been closed.");
+			return;
+		};
 		upThis.#controller.close();
 		upThis.#closedResolve();
 		upThis.closed = true;
 	};
 	error(err) {
 		let upThis = this;
+		if (upThis.closed) {
+			console.debug("The stream has already been closed.");
+			return;
+		};
 		upThis.#controller.error(err);
 		upThis.#closedResolve();
 		upThis.closed = true;
