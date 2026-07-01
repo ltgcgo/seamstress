@@ -496,17 +496,17 @@ let Seamstress = class Seamstress {
 	};
 	async #enqueueCascade(data, defaultHost, preferredHost) {
 		let upThis = this;
-		let dPrefix = `[Seamstress ENQU] Subchunk depth ${data.depth}, ID ${data.id}, type "${data.type}"`;
-		if (preferredHost?.closed === false) {
+		let dPrefix = `[Seamstress ENQU] Stream depth ${data.depth}, chunk ${data.id} (${data.chunkId}), type "${data.type}", size ${data.data.length} B (0x${(data.offsetData).toString(16)}, ${data.offsetStream}, ${data.offset})`;
+		let isChild = preferredHost?.closed === false;
+		if (isChild) {
 			await preferredHost.enqueue(data.data);
-			upThis.debugMode && console.debug(`${dPrefix} has been sent to the child stream host.`);
 		} else {
-			/*if (upThis.useCollection && upThis.isCollection(data.type)) {
+			if (upThis.useCollection && upThis.isCollection(data.type)) {
 				throw(new TypeError(`Type "${data.type}" should only be sent to the child, yet the child is not available.`));
-			};*/
+			};
 			await defaultHost.enqueue(data);
-			upThis.debugMode && console.debug(`${dPrefix} has been sent to the parent stream host.`);
 		};
+		upThis.debugMode && console.debug(`${dPrefix}: Was sent to the ${isChild ? "child" : "parent"} stream host.`);
 	};
 	#applyNestedContext(subchunkData, streamMeta) {
 		const upThis = this;
@@ -605,6 +605,10 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
+						upThis.#applyNestedContext(subchunkData, seamContext);
+						if (childStreamHost) {
+							await childStreamHost.ready;
+						};
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
 						upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should buffer the entire chunk.`);
 					} else {
@@ -621,6 +625,10 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
+						upThis.#applyNestedContext(subchunkData, seamContext);
+						if (childStreamHost) {
+							await childStreamHost.ready;
+						};
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
 						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the entire buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
@@ -645,6 +653,10 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
+						upThis.#applyNestedContext(subchunkData, seamContext);
+						if (childStreamHost) {
+							await childStreamHost.ready;
+						};
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
 						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
@@ -806,11 +818,9 @@ let Seamstress = class Seamstress {
 						upThis.#increaseInMap(seamChunkMap, chunkType);
 						upThis.debugMode && console.debug(`${dPrefix2}: Set chunk ${JSON.stringify(chunkType)} (#${seamChunkMap.get(chunkType) + 1}), size ${chunkSize} B.`);
 						readState = 0;
-						// Clean-up
+						// Clean-up of the stale child streams
 						if (childStreamHost?.closed === false) {
 							await childStreamHost.closure;
-							//await childStreamHost.ready;
-							//childStreamHost.close();
 						};
 						if (handleCollections && upThis.isCollection(chunkType)) {
 							childStreamHost = new StreamQueue();
@@ -836,9 +846,9 @@ let Seamstress = class Seamstress {
 										childStreamHost.close();
 									};*/
 								};
-								if (!childStreamHost.closed) {
+								/*if (!childStreamHost.closed) {
 									childStreamHost.close();
-								};
+								};*/
 							})().catch((err) => {
 								console.warn(err);
 								if (!childStreamHost.closed) {
@@ -848,7 +858,7 @@ let Seamstress = class Seamstress {
 								childStreamHost = null;
 							});
 						} else {
-							console.debug(`[Seamstress CHLD] Child stream deleted at depth ${upThis.meta.seamstressDepth}. Type "${chunkType}" is not a list/collection type.`);
+							console.debug(`[Seamstress CHLD] Child stream blanked out at depth ${upThis.meta.seamstressDepth}. Type "${chunkType}" is not a list/collection type.`);
 							//debugger;
 							childStreamHost = null;
 						};
@@ -894,7 +904,7 @@ let Seamstress = class Seamstress {
 					if (skipLength === 0 && childStreamHost?.closed === false) {
 						await childStreamHost.ready;
 						childStreamHost.close();
-						console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
+						console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}, offset ${chunkStart + ptr} (0x${(chunkStart + ptr + (upThis.meta?.seamstressOffset ?? 0)).toString(16)}).`);
 					};
 				};
 				chunkStart += chunk.length;
