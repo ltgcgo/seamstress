@@ -495,13 +495,17 @@ let Seamstress = class Seamstress {
 		return summedBuffer;
 	};
 	async #enqueueCascade(data, defaultHost, preferredHost) {
+		let upThis = this;
 		let dPrefix = `[Seamstress ENQU] Subchunk depth ${data.depth}, ID ${data.id}, type "${data.type}"`;
 		if (preferredHost?.closed === false) {
 			await preferredHost.enqueue(data.data);
-			this.debugMode && console.debug(`${dPrefix} has been enqueued to the child stream host.`);
+			upThis.debugMode && console.debug(`${dPrefix} has been sent to the child stream host.`);
 		} else {
+			if (upThis.useCollection && upThis.isCollection(data.type)) {
+				throw(new TypeError(`Type "${data.type}" should only be sent to the child, yet the child is not available.`));
+			};
 			await defaultHost.enqueue(data);
-			this.debugMode && console.debug(`${dPrefix} has been enqueued to the parent stream host.`);
+			upThis.debugMode && console.debug(`${dPrefix} has been sent to the parent stream host.`);
 		};
 	};
 	#applyNestedContext(subchunkData, streamMeta) {
@@ -826,10 +830,10 @@ let Seamstress = class Seamstress {
 									await streamHost.enqueue(childChunk);
 									let childReadBytes = childChunk.offsetStream + childChunk.data.length;
 									console.debug(`[Seamstress CHLD] Read ${childReadBytes} B out of ${childStreamRead.meta.seamstressExpectedSize} B at depth ${upThis.meta.seamstressDepth}.`);
-									if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
+									/*if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
 										console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
 										childStreamHost.close();
-									};
+									};*/
 								};
 								if (!childStreamHost.closed) {
 									childStreamHost.close();
@@ -883,16 +887,17 @@ let Seamstress = class Seamstress {
 					} else if (skipLength < 0) {
 						skipLength = 0;
 					};
-					/*if (skipLength === 0 && childStreamHost?.closed === false) {
+					if (skipLength === 0 && childStreamHost?.closed === false) {
 						await childStreamHost.ready;
 						childStreamHost.close();
-					};*/
+						console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
+					};
 				};
 				chunkStart += chunk.length;
 				chunkId ++;
 			};
 			if (skipLength > 0) {
-				console.warn(`Incoming stream may have ended early, with ${skipLength} B still expected.${isHeaderRead ? "" : " The header still hasn't been read."}`);
+				console.warn(`Incoming stream at depth ${upThis.meta.seamstressDepth} may have ended early, with ${skipLength} B still expected.${isHeaderRead ? "" : " The header still hasn't been read."}`);
 			};
 			if (childStreamHost?.closed === false) {
 				await childStreamHost.closure;
@@ -975,7 +980,7 @@ let Seamstress = class Seamstress {
 					bufferedChunk.context = context;
 					await streamHost.enqueue(bufferedChunk);
 				} else {
-					console.warn(`Incoming stream may have ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
+					console.warn(`Incoming stream at depth ${upThis.meta.seamstressDepth} may have ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
 				};
 			};
 			streamHost.close();
@@ -1026,7 +1031,7 @@ let Seamstress = class Seamstress {
 							bufferedChunk.context = context;
 							await streamHost.enqueue(bufferedChunk);
 						};
-						console.warn(`Chunk #${id} (${type}, #${chunkId}) has ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
+						console.warn(`Chunk #${id} (${type}, #${chunkId}) has ended early at depth ${upThis.meta.seamstressDepth}, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
 						buffer = [];
 						//inProgress = false;
 					};
@@ -1045,7 +1050,7 @@ let Seamstress = class Seamstress {
 					bufferedChunk.context = context;
 					await streamHost.enqueue(bufferedChunk);
 				} else {
-					console.warn(`Incoming stream may have ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
+					console.warn(`Incoming stream at depth ${upThis.meta.seamstressDepth} may have ended early, with ${upThis.#countBuffer(buffer)} B still unflushed.`);
 				};
 			};
 			streamHost.close();
