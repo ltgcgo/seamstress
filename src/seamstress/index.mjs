@@ -362,6 +362,7 @@ let SeamstressChunk = class SeamstressChunk {
 	chunkId = 0;
 	type = undefined;
 	offset = 0;
+	offsetStream = 0;
 	offsetData = 0;
 	size = 0;
 	chunkSize = 0;
@@ -493,11 +494,14 @@ let Seamstress = class Seamstress {
 		};
 		return summedBuffer;
 	};
-	async #enqueueCascade(data, defaultHost, childSubchunkHost) {
-		if (childSubchunkHost?.closed === false) {
-			await childSubchunkHost.enqueue(data.data);
+	async #enqueueCascade(data, defaultHost, preferredHost) {
+		let dPrefix = `[Seamstress ENQU] Subchunk depth ${data.depth}, ID ${data.id}, type "${data.type}"`;
+		if (preferredHost?.closed === false) {
+			await preferredHost.enqueue(data.data);
+			this.debugMode && console.debug(`${dPrefix} has been enqueued to the child stream host.`);
 		} else {
 			await defaultHost.enqueue(data);
+			this.debugMode && console.debug(`${dPrefix} has been enqueued to the parent stream host.`);
 		};
 	};
 	#applyNestedContext(subchunkData, streamMeta) {
@@ -518,6 +522,7 @@ let Seamstress = class Seamstress {
 	meta = {
 		seamstressDepth: 0,
 		seamstressOffset: 0,
+		seamstressExpectedSize: null,
 		seamstressParentPath: null,
 		seamstressParentUses: null
 	};
@@ -532,6 +537,7 @@ let Seamstress = class Seamstress {
 		return this.#listChunks.delete(type);
 	};
 	useCollection = false;
+	/** @returns {ReadableStream<SeamstressChunk>} */
 	readStream(stream) {
 		let upThis = this;
 		let skipLength = upThis.headerSize,
@@ -587,12 +593,13 @@ let Seamstress = class Seamstress {
 				if (streamHost.closed) {
 					break;
 				};
-				let dPrefix = `Stream chunk ${chunkId}`;
+				let dPrefix = `[Seamstress RSTR] Stream depth ${upThis.meta.seamstressDepth}, chunk ${chunkId}`;
 				if (skipLength > chunk.length) {
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
 						subchunkData.data = chunk;
-						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + chunkStart;
+						subchunkData.offsetStream = chunkStart;
+						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
 						upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should buffer the entire chunk.`);
@@ -607,13 +614,14 @@ let Seamstress = class Seamstress {
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
 						subchunkData.data = chunk;
-						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + chunkStart;
+						subchunkData.offsetStream = chunkStart;
+						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
-						upThis.debugMode && console.debug(`Committed the entire buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
+						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the entire buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
 					} else {
-						upThis.debugMode && console.debug(`Committed the entire buffer as a header chunk, size ${skipLength} B.`);
+						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the entire buffer as a header chunk, size ${skipLength} B.`);
 						headerBuffer.push(chunk);
 						if (typeof upThis.headerHandler === "function") {
 							seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer));
@@ -630,13 +638,14 @@ let Seamstress = class Seamstress {
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
 						subchunkData.data = chunk.subarray(0, skipLength);
-						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + chunkStart;
+						subchunkData.offsetStream = chunkStart;
+						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
-						upThis.debugMode && console.debug(`Committed the buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
+						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the buffer as a normal chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 						seamChunkId ++;
 					} else {
-						upThis.debugMode && console.debug(`Committed the buffer as a header chunk, size ${skipLength} B.`);
+						upThis.debugMode && console.debug(`[Seamstress RSTR] Committed the buffer as a header chunk, size ${skipLength} B.`);
 						headerBuffer.push(chunk.subarray(0, skipLength));
 						if (typeof upThis.headerHandler === "function") {
 							seamContext = upThis.headerHandler(upThis.#mergeBuffer(headerBuffer));
@@ -795,25 +804,41 @@ let Seamstress = class Seamstress {
 						readState = 0;
 						// Clean-up
 						if (childStreamHost?.closed === false) {
-							childStreamHost.close();
+							await childStreamHost.closure;
+							//await childStreamHost.ready;
+							//childStreamHost.close();
 						};
 						if (handleCollections && upThis.isCollection(chunkType)) {
 							childStreamHost = new StreamQueue();
+							childStreamRead.debugMode = upThis.debugMode;
 							childStreamRead.meta.seamstressDepth = upThis.meta.seamstressDepth + 1;
 							childStreamRead.meta.seamstressOffset = (upThis.meta.seamstressOffset ?? 0) + chunkStart + ptr + 1;
+							childStreamRead.meta.seamstressExpectedSize = chunkSize;
 							childStreamRead.meta.seamstressParentPath = (upThis.meta.seamstressParentPath?.slice() ?? []);
 							childStreamRead.meta.seamstressParentPath.push(chunkType);
 							if (seamContext.seamstressParentUse) {
 								childStreamRead.meta.seamstressParentUses = (upThis.meta.seamstressParentUses?.slice() ?? []);
 								childStreamRead.meta.seamstressParentUses.push(seamContext.seamstressParentUse);
 							};
+							console.debug(`[Seamstress CHLD] Created a new child stream for chunk "${chunkType}" at depth ${upThis.meta.seamstressDepth}.`);
 							(async () => {
 								for await (let childChunk of childStreamRead.readStream(childStreamHost.readable)) {
 									await streamHost.enqueue(childChunk);
+									let childReadBytes = childChunk.offsetStream + childChunk.data.length;
+									console.debug(`[Seamstress CHLD] Read ${childReadBytes} B out of ${childStreamRead.meta.seamstressExpectedSize} B at depth ${upThis.meta.seamstressDepth}.`);
+									if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
+										console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
+										childStreamHost.close();
+									};
+								};
+								if (!childStreamHost.closed) {
+									childStreamHost.close();
 								};
 							})().catch((err) => {
 								console.warn(err);
-								childStreamHost.close();
+								if (!childStreamHost.closed) {
+									childStreamHost.close();
+								};
 								childStreamHost = undefined;
 							});
 						} else {
@@ -828,7 +853,8 @@ let Seamstress = class Seamstress {
 							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
 								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
 							};
-							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + chunkStart + ptr;
+							subchunkData.offsetStream = chunkStart + ptr;
+							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 							subchunkData.context = seamContext;
 							upThis.#applyNestedContext(subchunkData, seamContext);
 							await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
@@ -842,7 +868,8 @@ let Seamstress = class Seamstress {
 							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
 								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
 							};
-							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + chunkStart + ptr;
+							subchunkData.offsetStream = chunkStart + ptr;
+							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 							subchunkData.context = seamContext;
 							upThis.#applyNestedContext(subchunkData, seamContext);
 							await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
@@ -856,6 +883,10 @@ let Seamstress = class Seamstress {
 					} else if (skipLength < 0) {
 						skipLength = 0;
 					};
+					/*if (skipLength === 0 && childStreamHost?.closed === false) {
+						await childStreamHost.ready;
+						childStreamHost.close();
+					};*/
 				};
 				chunkStart += chunk.length;
 				chunkId ++;
@@ -882,7 +913,7 @@ let Seamstress = class Seamstress {
 		let unbuffered = upThis.readStream(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let id, chunkId, type, size, context;
-		let isOffsetWritten = false, offset = 0, offsetData = 0;
+		let isOffsetWritten = false, offset = 0, offsetData = 0, offsetStream = 0;
 		(async () => {
 			for await (let unbufferedChunk of unbuffered) {
 				({id, chunkId, type, size, context} = unbufferedChunk);
@@ -923,6 +954,7 @@ let Seamstress = class Seamstress {
 						} else {
 							if (isOffsetWritten === false) {
 								offset = unbufferedChunk.offset + inChunkPtr;
+								offsetStream = unbufferedChunk.offsetStream + inChunkPtr;
 								offsetData = unbufferedChunk.offsetData + inChunkPtr;
 								isOffsetWritten = true;
 							};
@@ -958,7 +990,7 @@ let Seamstress = class Seamstress {
 		let unbuffered = upThis.readStream(stream, true);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let inProgress = false;
-		let id, chunkId, type, size, context, offsetData;
+		let id, chunkId, type, size, context, offsetData, offsetStream;
 		(async () => {
 			for await (let unbufferedChunk of unbuffered) {
 				let sizeSum = unbufferedChunk.offset + unbufferedChunk.data.length;
@@ -971,7 +1003,7 @@ let Seamstress = class Seamstress {
 					if (unbufferedChunk.offset === 0) {
 						// The chunk was already fully buffered.
 						await streamHost.enqueue(unbufferedChunk);
-						upThis.debugMode && console.debug(`Committed a fully buffered chunk.`);
+						upThis.debugMode && console.debug(`[Seamstress RCHK] Committed a fully buffered chunk.`);
 					} else {
 						// Use the information stored on the first chunk buffer.
 						buffer.push(unbufferedChunk.data);
@@ -981,7 +1013,7 @@ let Seamstress = class Seamstress {
 						buffer = [];
 						bufferedChunk.context = context;
 						await streamHost.enqueue(bufferedChunk);
-						upThis.debugMode && console.debug(`Committed a buffered chunk.`);
+						upThis.debugMode && console.debug(`[Seamstress RCHK] Committed a buffered chunk.`);
 						inProgress = false;
 					};
 					continue;
@@ -999,7 +1031,7 @@ let Seamstress = class Seamstress {
 						//inProgress = false;
 					};
 					inProgress = true;
-					({id, chunkId, type, size, context, offsetData} = unbufferedChunk);
+					({id, chunkId, type, size, context, offsetData, offsetStream} = unbufferedChunk);
 				};
 				buffer.push(unbufferedChunk.data);
 			};
@@ -1007,6 +1039,7 @@ let Seamstress = class Seamstress {
 				if (flushAll) {
 					let bufferedChunk = new SeamstressChunk(id, chunkId, type, 0, size);
 					bufferedChunk.data = upThis.#mergeBuffer(buffer);
+					bufferedChunk.offsetStream = offsetStream;
 					bufferedChunk.offsetData = offsetData;
 					buffer = [];
 					bufferedChunk.context = context;

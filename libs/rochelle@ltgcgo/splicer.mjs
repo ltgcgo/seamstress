@@ -12,12 +12,16 @@ const StreamQueue = class StreamQueue {
 	closure;
 	cancelled;
 	readable;
+	get ready() {
+		return this.#pullPromise;
+	};
 	constructor(underlyingSource = {}, queuingStrategy) {
 		let upThis = this;
 		let enqueueResolve, enqueueReject, cancelledResolve;
 		upThis.cancelled = new Promise((p) => {
 			cancelledResolve = p;
 		});
+		WritableStreamDefaultWriter.prototype
 		upThis.closure = new Promise((p) => {
 			upThis.#closedResolve = p;
 		})

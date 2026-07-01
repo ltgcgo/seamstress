@@ -124,12 +124,14 @@ const handleBinaryStream = async function (selectedFile) {
 				rawParser.headerSize = 12;
 				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_B | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
 				rawParser.debugMode = true;
+				rawParser.useCollection = true;
 				break;
 			};
 			case "riff": {
 				rawParser.headerSize = 12;
 				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_L | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
 				rawParser.debugMode = true;
+				rawParser.useCollection = true;
 				break;
 			};
 			default: {
@@ -140,7 +142,7 @@ const handleBinaryStream = async function (selectedFile) {
 		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size        Depth (Usage)`]);
 		isDemoActive = true;
 		for await (let chunk of rawParser.readChunks(selectedFile.stream, true)) {
-			console.debug(chunk);
+			//console.debug(chunk);
 			console.debug(summarizeSeamstressChunk(chunk));
 			let showKey = chunk.type;
 			if (typeof key === "number") {

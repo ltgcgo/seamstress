@@ -76,6 +76,12 @@ export interface SeamstressContext {
 	/**
 	* This field may not be present. Used by `Seamstress.meta`.
 	*
+	* Defines the expected size of the current stream. Must be a non-negative integer.
+	*/
+	seamstressExpectedSize?: number;
+	/**
+	* This field may not be present. Used by `Seamstress.meta`.
+	*
 	* Defines the current depth. Starts at `0`.
 	*/
 	seamstressDepth?: number;
@@ -115,7 +121,9 @@ export interface SeamstressChunk {
 	typeUses?: string[];
 	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to 0. */
 	offset: number;
-	/** The offset of the current data (sub)chunk compared to the rest of the binary stream. */
+	/** (WIP) The offset of the current data (sub)chunk compared to the rest of the scoped binary stream session. */
+	offsetStream: number;
+	/** The offset of the current data (sub)chunk compared to the rest of the full binary stream instance. */
 	offsetData: number;
 	/** The full size of the current chunk. */
 	size: number;
