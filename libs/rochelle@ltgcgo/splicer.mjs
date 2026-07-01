@@ -15,7 +15,7 @@ const StreamQueue = class StreamQueue {
 	closure;
 	cancelled;
 	readable;
-	#isLazy = false;
+	#isLazy = true;
 	get ready() {
 		return this.#pullPromise;
 	};

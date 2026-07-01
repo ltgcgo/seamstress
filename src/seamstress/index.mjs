@@ -607,7 +607,7 @@ let Seamstress = class Seamstress {
 		8:   BUFFER_SERIALIZE
 		*/
 		let streamDebugId = upThis.#randomId();
-		let dPrefixWait = `[Seamstress WAIT] Depth ${upThis.meta.seamstressDepth}:`;
+		let dPrefixWait = `[Seamstress WAIT] Stream "${streamDebugId}", depth ${upThis.meta.seamstressDepth}:`;
 		upThis.debugMode && console.info(`[Seamstress RSTR] Stream "${streamDebugId}"${upThis.meta.seamstressParentId ? ` ← "${upThis.meta.seamstressParentId}"` : ""} at depth ${upThis.meta.seamstressDepth} has started${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
 		(async () => {
 			for await (let chunk of stream) {
@@ -623,7 +623,7 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						upThis.#applyNestedContext(subchunkData, seamContext);
-						if (childStreamHost) {
+						if (false && childStreamHost) {
 							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled buffering of an entire chunk.`);
 							await childStreamHost.ready;
 						};
@@ -644,7 +644,7 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						upThis.#applyNestedContext(subchunkData, seamContext);
-						if (childStreamHost) {
+						if (false && childStreamHost) {
 							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled commit of an entire chunk.`);
 							await childStreamHost.ready;
 						};
@@ -673,7 +673,7 @@ let Seamstress = class Seamstress {
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
 						upThis.#applyNestedContext(subchunkData, seamContext);
-						if (childStreamHost) {
+						if (false && childStreamHost) {
 							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled commit of a chunk.`);
 							await childStreamHost.ready;
 						};
@@ -863,7 +863,7 @@ let Seamstress = class Seamstress {
 									console.debug(`[Seamstress WAIT] Waiting for the next chunk from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
 									await streamHost.enqueue(childChunk);
 									let childReadBytes = childChunk.offsetStream + childChunk.data.length;
-									console.debug(`[Seamstress CHLD] Read ${childReadBytes} B out of ${childStreamRead.meta.seamstressExpectedSize} B from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
+									console.debug(`[Seamstress CHLD] Read ${childReadBytes} B (${childChunk.data.length} B) of type "${childChunk.type}" out of ${childStreamRead.meta.seamstressExpectedSize} B from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
 									/*if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
 										console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
 										childStreamHost.close();
