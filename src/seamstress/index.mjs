@@ -366,6 +366,7 @@ let SeamstressChunk = class SeamstressChunk {
 	size = 0;
 	data = undefined;
 	context = undefined;
+	typePath;
 	get isFinal() {
 		if (this.data.length + this.offset === this.size) {
 			return true;
@@ -447,6 +448,7 @@ let Seamstress = class Seamstress {
 	TYPE_4CC = 8;
 	debugMode = false;
 	#u8Dec = new TextDecoder("l9");
+	#listChunks = new Set();
 	#increaseInMap(map, key) {
 		if (map.has(key)) {
 			let value = map.get(key);
@@ -481,6 +483,15 @@ let Seamstress = class Seamstress {
 	headerSize = 0;
 	type = 0; // 0 for non-reversible SEAM stream, 10 for SMF
 	headerHandler;
+	hasList(type) {
+		return this.#listChunks.has(type);
+	};
+	addList(type) {
+		this.#listChunks.add(type);
+	};
+	delList(type) {
+		return this.#listChunks.delete(type);
+	};
 	readStream(stream) {
 		let upThis = this;
 		let skipLength = upThis.headerSize,
@@ -1094,6 +1105,9 @@ let Seamstress = class Seamstress {
 			chunkStart += chunk.length;
 		};
 		return map;
+	};
+	constructor() {
+		this.addList("LIST");
 	};
 };
 

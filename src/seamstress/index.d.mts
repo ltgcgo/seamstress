@@ -79,6 +79,8 @@ export interface SeamstressChunk {
 	chunkId: number;
 	/** Type of the current chunk as either integers or Latin-9 strings. */
 	type: number|string;
+	/** If the chunk type is string, and the current chunk is a child of a parent chunk (e.g. `LIST`), this property will contain the full path of the current chunk. */
+	typePath?: number[]|string[];
 	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to 0. */
 	offset: number;
 	/** The offset of the current data (sub)chunk compared to the rest of the binary stream. */
@@ -89,8 +91,8 @@ export interface SeamstressChunk {
 	isFinal: boolean;
 	/** When `true`, the current (streamed) chunk is a fully buffered chunk. */
 	isBuffered: boolean;
-	/** The (streamed) payload of the chunk. */
-	data: Uint8Array;
+	/** The (streamed) payload of the chunk as `Uint8Array`. For RIFF `LIST` chunks, this denotes the type of the `LIST` chunk as a string. */
+	data: Uint8Array|string;
 	/** The context properties passed from header. */
 	context?: SeamstressContext;
 	/**
@@ -165,7 +167,7 @@ export class Seamstress {
 	/** (Non-finalized, WIP) Registers a type of list chunk, and returns true when successful (isn't already registered). Only valid with FourCC types. Useful for FourCC-typed list chunks containing subchunks. "LIST" will always be registered for IFF/RIFF files.
 	* @param type FourCC in a Latin-9 string.
 	*/
-	addList(type: string): boolean;
+	addList(type: string): void;
 	/** (Non-finalized, WIP) Removes a type of list chunk, and returns true when successful (is registered). Only valid with FourCC types.
 	* @param type FourCC in a Latin-9 string.
 	*/
