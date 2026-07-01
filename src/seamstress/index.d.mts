@@ -88,6 +88,12 @@ export interface SeamstressContext {
 	/**
 	* This field may not be present. Used by `Seamstress.meta`.
 	*
+	* Defines the parent stream ID of the current stream. For debug purposes only.
+	*/
+	seamstressParentId?: string;
+	/**
+	* This field may not be present. Used by `Seamstress.meta`.
+	*
 	* Defines the parent type of the stream.
 	*/
 	seamstressParentPath?: string[];

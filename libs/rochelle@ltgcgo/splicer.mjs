@@ -6,18 +6,22 @@
 const StreamQueue = class StreamQueue {
 	#controller;
 	#pullPromise;
+	#pullResolve;
+	#pullReject;
 	#closedResolve;
+	#isBusy = false;
 	debugMode = false;
 	closed = false;
 	closure;
 	cancelled;
 	readable;
+	#isLazy = false;
 	get ready() {
 		return this.#pullPromise;
 	};
 	constructor(underlyingSource = {}, queuingStrategy) {
 		let upThis = this;
-		let enqueueResolve, enqueueReject, cancelledResolve;
+		let cancelledResolve;
 		upThis.cancelled = new Promise((p) => {
 			cancelledResolve = p;
 		});
@@ -29,7 +33,7 @@ const StreamQueue = class StreamQueue {
 			"type": underlyingSource?.type,
 			"autoAllocateChunkSize": underlyingSource?.autoAllocateChunkSize,
 			"cancel": async (reason) => {
-				enqueueReject(reason);
+				upThis.#pullReject(reason);
 				cancelledResolve(reason);
 				upThis.#closedResolve();
 				upThis.closed = true;
@@ -56,26 +60,39 @@ const StreamQueue = class StreamQueue {
 				}));
 				upThis.debugMode && console.debug(`Source start called.`);
 				upThis.#pullPromise = new Promise((p, r) => {
-					enqueueResolve = p;
-					enqueueReject = r;
+					upThis.#pullResolve = p;
+					upThis.#pullReject = r;
 				});
 			},
 			"pull": async (controller) => {
-				enqueueResolve();
-				upThis.#pullPromise = new Promise((p, r) => {
-					enqueueResolve = p;
-					enqueueReject = r;
-				});
+				upThis.#isBusy = false;
+				upThis.#pullResolve();
+				if (!upThis.#isLazy) {
+					upThis.#pullPromise = new Promise((p, r) => {
+						upThis.#pullResolve = p;
+						upThis.#pullReject = r;
+					});
+				};
 				upThis.debugMode && console.debug(`Stream pull.`);
 			}
 		}, queuingStrategy);
 	};
 	enqueue(chunk) {
-		if (this.closed) {
+		let upThis = this;
+		if (upThis.closed) {
 			throw(new Error("The stream is closed."));
 		};
-		this.#controller.enqueue(chunk);
-		return this.#pullPromise;
+		if (upThis.#isBusy === false) {
+			upThis.#isBusy = true;
+			if (upThis.#isLazy) {
+				upThis.#pullPromise = new Promise((p, r) => {
+					upThis.#pullResolve = p;
+					upThis.#pullReject = r;
+				});
+			};
+		};
+		upThis.#controller.enqueue(chunk);
+		return upThis.#pullPromise;
 	};
 	close() {
 		let upThis = this;
