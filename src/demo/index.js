@@ -137,20 +137,23 @@ const handleBinaryStream = async function (selectedFile) {
 				return;
 			};
 		};
-		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size`]);
+		await textStreamQueue.enqueue([127, `\nType          No.     Offset      Size        Depth (Usage)`]);
 		isDemoActive = true;
 		for await (let chunk of rawParser.readChunks(selectedFile.stream, true)) {
+			console.debug(chunk);
 			console.debug(summarizeSeamstressChunk(chunk));
 			let showKey = chunk.type;
 			if (typeof key === "number") {
 				showKey = `0x${chunk.type.toString(16)}`;
 			};
 			showKey = showKey.padEnd(10, " ");
-			if (chunk.chunkId > 0) {
+			/*if (chunk.chunkId > 0) {
 				await textStreamQueue.enqueue([127, `            - #${`${chunk.chunkId + 1}`.padStart(4, "0")}   0x${chunk.offsetData.toString(16).padStart(8, "0")}  ${chunk.size} B`]);
-			} else {
-				await textStreamQueue.enqueue([127, `${showKey}  - #${"1".padStart(4, "0")}   0x${chunk.offsetData.toString(16).padStart(8, "0")}  ${chunk.size} B`]);
-			};
+			} else {*/
+				let sizeText = `${chunk.size}`;
+				let depthText = `${chunk.depth}`;
+				await textStreamQueue.enqueue([127, `${showKey}  - #${`${chunk.chunkId + 1}`.padStart(4, "0")}   0x${chunk.offsetData.toString(16).padStart(8, "0")}  ${sizeText} B${" ".repeat(10 - sizeText.length)}${depthText}${" ".repeat(6 - depthText.length)}${chunk.typePath?.length > 0 ? chunk.typeUses.join(" ") : ""}`]);
+			//};
 		};
 		console.info("Finished chunk skimming.");
 		await textStreamQueue.enqueue([3, `\nReading finished.`]);
