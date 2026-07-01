@@ -497,6 +497,7 @@ let Seamstress = class Seamstress {
 	async #enqueueCascade(data, defaultHost, preferredHost) {
 		let upThis = this;
 		let dPrefix = `[Seamstress ENQU] Stream depth ${data.depth}, chunk ${data.id} (${data.chunkId}), type "${data.type}", size ${data.data.length} B (0x${(data.offsetData).toString(16)}, ${data.offsetStream}, ${data.offset})`;
+		//upThis.debugMode && console.debug(`${dPrefix}: Sending scheduled.`);
 		let isChild = preferredHost?.closed === false;
 		if (isChild) {
 			await preferredHost.enqueue(data.data);
@@ -592,6 +593,7 @@ let Seamstress = class Seamstress {
 		4-7: SIZE_READ_B0...3
 		8:   BUFFER_SERIALIZE
 		*/
+		upThis.debugMode && console.info(`[Seamstress RSTR] Stream at depth ${upThis.meta.seamstressDepth} has started${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
 		(async () => {
 			for await (let chunk of stream) {
 				if (streamHost.closed) {
@@ -854,7 +856,7 @@ let Seamstress = class Seamstress {
 								if (!childStreamHost.closed) {
 									childStreamHost.close();
 								};
-								console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth} due to errors.`);
+								console.info(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth} due to errors.`);
 								childStreamHost = null;
 							});
 						} else {
@@ -904,7 +906,7 @@ let Seamstress = class Seamstress {
 					if (skipLength === 0 && childStreamHost?.closed === false) {
 						await childStreamHost.ready;
 						childStreamHost.close();
-						console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}, offset ${chunkStart + ptr} (0x${(chunkStart + ptr + (upThis.meta?.seamstressOffset ?? 0)).toString(16)}).`);
+						console.info(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}, offset ${chunkStart + ptr} (0x${(chunkStart + ptr + (upThis.meta?.seamstressOffset ?? 0)).toString(16)}).`);
 					};
 				};
 				chunkStart += chunk.length;
@@ -917,6 +919,7 @@ let Seamstress = class Seamstress {
 				await childStreamHost.closure;
 			};
 			streamHost.close();
+			upThis.debugMode && console.info(`[Seamstress RSTR] Stream at depth ${upThis.meta.seamstressDepth} has stopped${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""}${seamContext?.seamstressParentUse && upThis.meta.seamstressParentUses?.length > 0 ? "." : ""}${seamContext?.seamstressParentUse ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
 		})().catch((err) => {
 			streamHost.error(err);
 		});
