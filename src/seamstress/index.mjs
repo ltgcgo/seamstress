@@ -501,9 +501,9 @@ let Seamstress = class Seamstress {
 			await preferredHost.enqueue(data.data);
 			upThis.debugMode && console.debug(`${dPrefix} has been sent to the child stream host.`);
 		} else {
-			if (upThis.useCollection && upThis.isCollection(data.type)) {
+			/*if (upThis.useCollection && upThis.isCollection(data.type)) {
 				throw(new TypeError(`Type "${data.type}" should only be sent to the child, yet the child is not available.`));
-			};
+			};*/
 			await defaultHost.enqueue(data);
 			upThis.debugMode && console.debug(`${dPrefix} has been sent to the parent stream host.`);
 		};
@@ -562,7 +562,7 @@ let Seamstress = class Seamstress {
 		};
 		let streamHost = new StreamQueue();
 		let handleCollections = upThis.useCollection,
-		childStreamHost, childStreamRead,
+		childStreamHost = null, childStreamRead,
 		childStreamHeaderSize = 0,
 		childStreamHeaderHandler;
 		if (handleCollections) {
@@ -815,6 +815,7 @@ let Seamstress = class Seamstress {
 						if (handleCollections && upThis.isCollection(chunkType)) {
 							childStreamHost = new StreamQueue();
 							childStreamRead.debugMode = upThis.debugMode;
+							childStreamRead.useCollection = upThis.useCollection;
 							childStreamRead.meta.seamstressDepth = upThis.meta.seamstressDepth + 1;
 							childStreamRead.meta.seamstressOffset = (upThis.meta.seamstressOffset ?? 0) + chunkStart + ptr + 1;
 							childStreamRead.meta.seamstressExpectedSize = chunkSize;
@@ -843,10 +844,13 @@ let Seamstress = class Seamstress {
 								if (!childStreamHost.closed) {
 									childStreamHost.close();
 								};
-								childStreamHost = undefined;
+								console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth} due to errors.`);
+								childStreamHost = null;
 							});
 						} else {
-							childStreamHost = undefined;
+							console.debug(`[Seamstress CHLD] Child stream deleted at depth ${upThis.meta.seamstressDepth}. Type "${chunkType}" is not a list/collection type.`);
+							//debugger;
+							childStreamHost = null;
 						};
 					};
 					ptr ++;
