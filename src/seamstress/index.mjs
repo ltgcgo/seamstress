@@ -200,6 +200,38 @@ let IntegerHandler = class IntegerHandler {
 		};
 		return value === 0n ? 1 : Math.floor((this.bitsBigUint(value) + 6) / 7);
 	};
+	static writeVLV(buffer, value, offset = 0) {
+		this.#ensureU8(buffer);
+		this.#ensureNumber(value);
+		const vlvSize = this.lengthVLV(value);
+		let view = value, setBit = 0;
+		for (let ptr = vlvSize - 1; ptr >= 0; ptr --) {
+			buffer[offset + ptr] = setBit | (view & 127);
+			setBit = 128;
+			view >>= 7;
+		};
+	};
+	static writeVLVBigInt(buffer, value, offset = 0) {
+		this.#ensureU8(buffer);
+		this.#ensureBigInt(value);
+		const vlvSize = this.lengthVLVBigInt(value);
+		let view = value, setBit = 0;
+		for (let ptr = vlvSize - 1; ptr >= 0; ptr --) {
+			buffer[offset + ptr] = setBit | Number(view & 127n);
+			setBit = 128;
+			view >>= 7n;
+		};
+	};
+	static emitVLV(value) {
+		const buffer = new Uint8Array(this.lengthVLV(value));
+		this.writeVLV(buffer, value);
+		return buffer;
+	};
+	static emitVLVBigInt(value) {
+		const buffer = new Uint8Array(this.lengthVLVBigInt(value));
+		this.writeVLVBigInt(buffer, value);
+		return buffer;
+	};
 	static readRVLV(buffer, offset = 0) {
 		this.#ensureU8(buffer);
 		switch (buffer[offset] & this.MASK_RVLV) {
