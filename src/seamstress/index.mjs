@@ -29,8 +29,9 @@ let IntegerHandler = class IntegerHandler {
 	static RVLV_MIDDLE = 128;
 	static RVLV_END = 64;
 	static RVLV_SINGLE = 0;
-	static #unsafeType = false;
 	static useNative = true;
+	static useStrict = true;
+	static #unsafeType = false;
 	static #hiddenDataView = Symbol("Key for the hidden DataView.");
 	static #ensureUnsafe() {};
 	static #ensureU8Safe(buffer) {
@@ -137,18 +138,31 @@ let IntegerHandler = class IntegerHandler {
 		// VLV-8 are all big-endian.
 		let upThis = this;
 		upThis.#ensureU8(buffer);
-		let breakCrit = Math.min(buffer.length, 4),
+		let breakCrit = Math.min(buffer.length - offset, 4),
 		breakTest = breakCrit - 1,
 		result = 0;
+		let nonCanonicalHead = true;
 		for (let i = 0; i < breakCrit; i ++) {
 			let e = buffer[i + offset];
 			if (i > 0) {
 				result <<= 7;
 			};
 			result |= e & 127;
+			if (e === 128) {
+				if (nonCanonicalHead) {
+					const errorMsg = `Encountered a non-canonical VLV-8 byte 0x80.`;
+					if (this.useStrict) {
+						throw(new Error(errorMsg));
+					} else {
+						console.warn(errorMsg);
+					};
+				};
+			} else {
+				nonCanonicalHead = false;
+			};
 			if ((e & this.MASK_VLV) === 0) {
 				break;
-			} else if (breakTest >= breakCrit) {
+			} else if (i >= breakTest) {
 				throw(new Error(`VLV-8 did not terminate at the end of the read buffer.`));
 			};
 		};
@@ -158,18 +172,31 @@ let IntegerHandler = class IntegerHandler {
 		// VLV-8 are all big-endian.
 		let upThis = this;
 		upThis.#ensureU8(buffer);
-		let breakCrit = Math.min(buffer.length, 16),
+		let breakCrit = Math.min(buffer.length - offset, 16),
 		breakTest = breakCrit - 1,
 		result = 0n;
+		let nonCanonicalHead = true;
 		for (let i = 0; i < breakCrit; i ++) {
 			let e = buffer[i + offset];
 			if (i > 0) {
 				result <<= 7n;
 			};
 			result |= BigInt(e & 127);
+			if (e === 128) {
+				if (nonCanonicalHead) {
+					const errorMsg = `Encountered a non-canonical VLV-8 byte 0x80.`;
+					if (this.useStrict) {
+						throw(new Error(errorMsg));
+					} else {
+						console.warn(errorMsg);
+					};
+				};
+			} else {
+				nonCanonicalHead = false;
+			};
 			if ((e & this.MASK_VLV) === 0) {
 				break;
-			} else if (breakTest >= breakCrit) {
+			} else if (i >= breakTest) {
 				throw(new Error(`VLV-8 did not terminate at the end of the read buffer.`));
 			};
 		};
@@ -725,6 +752,8 @@ let Seamstress = class Seamstress {
 				};
 			};
 		};
+		// WIP: Disabled nested parsing.
+		handleCollections = false;
 		if (handleCollections) {
 			childStreamRead = new Seamstress();
 			childStreamRead.headerSize = childStreamHeaderSize;
@@ -976,47 +1005,49 @@ let Seamstress = class Seamstress {
 							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for the stale child stream to close.`);
 							await childStreamHost.closure;
 						};
-						if (handleCollections && upThis.isCollection(chunkType)) {
-							childStreamHost = new StreamQueue();
-							childStreamRead.debugMode = upThis.debugMode;
-							childStreamRead.useCollection = upThis.useCollection;
-							childStreamRead.meta.seamstressDepth = upThis.meta.seamstressDepth + 1;
-							childStreamRead.meta.seamstressOffset = (upThis.meta.seamstressOffset ?? 0) + chunkStart + ptr + 1;
-							childStreamRead.meta.seamstressExpectedSize = chunkSize;
-							childStreamRead.meta.seamstressParentPath = (upThis.meta.seamstressParentPath?.slice() ?? []);
-							childStreamRead.meta.seamstressParentPath.push(chunkType);
-							childStreamRead.meta.seamstressParentId = streamDebugId;
-							if (seamContext.seamstressParentUse) {
-								childStreamRead.meta.seamstressParentUses = (upThis.meta.seamstressParentUses?.slice() ?? []);
-								childStreamRead.meta.seamstressParentUses.push(seamContext.seamstressParentUse);
-							};
-							console.debug(`[Seamstress CHLD] Started a new child stream for chunk "${chunkType}" at depth ${upThis.meta.seamstressDepth}.`);
-							(async () => {
-								for await (let childChunk of childStreamRead.readStream(childStreamHost.readable)) {
-									console.debug(`[Seamstress WAIT] Waiting for the next chunk from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
-									await streamHost.enqueue(childChunk);
-									let childReadBytes = childChunk.offsetStream + childChunk.data.length;
-									console.debug(`[Seamstress CHLD] Read ${childReadBytes} B (${childChunk.data.length} B) of type "${childChunk.type}" out of ${childStreamRead.meta.seamstressExpectedSize} B from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
-									/*if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
-										console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
+						if (handleCollections) {
+							if (upThis.isCollection(chunkType)) {
+								childStreamHost = new StreamQueue();
+								childStreamRead.debugMode = upThis.debugMode;
+								childStreamRead.useCollection = upThis.useCollection;
+								childStreamRead.meta.seamstressDepth = upThis.meta.seamstressDepth + 1;
+								childStreamRead.meta.seamstressOffset = (upThis.meta.seamstressOffset ?? 0) + chunkStart + ptr + 1;
+								childStreamRead.meta.seamstressExpectedSize = chunkSize;
+								childStreamRead.meta.seamstressParentPath = (upThis.meta.seamstressParentPath?.slice() ?? []);
+								childStreamRead.meta.seamstressParentPath.push(chunkType);
+								childStreamRead.meta.seamstressParentId = streamDebugId;
+								if (seamContext.seamstressParentUse) {
+									childStreamRead.meta.seamstressParentUses = (upThis.meta.seamstressParentUses?.slice() ?? []);
+									childStreamRead.meta.seamstressParentUses.push(seamContext.seamstressParentUse);
+								};
+								console.debug(`[Seamstress CHLD] Started a new child stream for chunk "${chunkType}" at depth ${upThis.meta.seamstressDepth}.`);
+								(async () => {
+									for await (let childChunk of childStreamRead.readStream(childStreamHost.readable)) {
+										console.debug(`[Seamstress WAIT] Waiting for the next chunk from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
+										await streamHost.enqueue(childChunk);
+										let childReadBytes = childChunk.offsetStream + childChunk.data.length;
+										console.debug(`[Seamstress CHLD] Read ${childReadBytes} B (${childChunk.data.length} B) of type "${childChunk.type}" out of ${childStreamRead.meta.seamstressExpectedSize} B from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
+										/*if (childReadBytes >= childStreamRead.meta.seamstressExpectedSize) {
+											console.debug(`[Seamstress CHLD] Child stream closed at depth ${upThis.meta.seamstressDepth}.`);
+											childStreamHost.close();
+										};*/
+									};
+									/*if (!childStreamHost.closed) {
 										childStreamHost.close();
 									};*/
-								};
-								/*if (!childStreamHost.closed) {
-									childStreamHost.close();
-								};*/
-							})().catch((err) => {
-								console.warn(err);
-								if (childStreamHost?.closed === false) {
-									childStreamHost.close();
-								};
-								console.info(`[Seamstress CHLD] Child stream at depth ${upThis.meta.seamstressDepth + 1} stopped at depth ${upThis.meta.seamstressDepth} due to errors. Parent ID: "${streamDebugId}".`);
+								})().catch((err) => {
+									console.warn(err);
+									if (childStreamHost?.closed === false) {
+										childStreamHost.close();
+									};
+									console.info(`[Seamstress CHLD] Child stream at depth ${upThis.meta.seamstressDepth + 1} stopped at depth ${upThis.meta.seamstressDepth} due to errors. Parent ID: "${streamDebugId}".`);
+									childStreamHost = null;
+								});
+							} else {
+								console.debug(`[Seamstress CHLD] Child stream blanked out at depth ${upThis.meta.seamstressDepth}. Type "${chunkType}" is not a list/collection type. Parent ID: "${streamDebugId}"`);
+								//debugger;
 								childStreamHost = null;
-							});
-						} else {
-							console.debug(`[Seamstress CHLD] Child stream blanked out at depth ${upThis.meta.seamstressDepth}. Type "${chunkType}" is not a list/collection type. Parent ID: "${streamDebugId}"`);
-							//debugger;
-							childStreamHost = null;
+							};
 						};
 					};
 					ptr ++;
