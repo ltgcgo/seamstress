@@ -608,6 +608,8 @@ let Seamstress = class Seamstress {
 	static ENDIAN_L = 0b00000000_00000001;
 	static LENGTH_VLV = 0b00000000_00000000;
 	static LENGTH_U32 = 0b00000000_00000010;
+	static PAD_NONE = 0b00000000_00000000;
+	static PAD_EVEN = 0b00000000_00000100;
 	static TYPE_VLV = 0b00000000_00000000;
 	static TYPE_UI8 = 0b00000000_00010000;
 	static TYPE_4CC = 0b00000000_00100000;
@@ -619,7 +621,10 @@ let Seamstress = class Seamstress {
 	ENDIAN_L = Seamstress.ENDIAN_L;
 	LENGTH_VLV = Seamstress.LENGTH_VLV;
 	LENGTH_U32 = Seamstress.LENGTH_U32;
+	PAD_NONE = Seamstress.PAD_NONE;
+	PAD_EVEN = Seamstress.PAD_EVEN;
 	TYPE_VLV = Seamstress.TYPE_VLV;
+	TYPE_UI8 = Seamstress.TYPE_UI8;
 	TYPE_4CC = Seamstress.TYPE_4CC;
 	debugMode = false;
 	#l9Dec = new TextDecoder("l9");
@@ -719,6 +724,9 @@ let Seamstress = class Seamstress {
 	/** @returns {ReadableStream<SeamstressChunk>} */
 	readStream(stream) {
 		let upThis = this;
+		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
+			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
+		};
 		let skipLength = upThis.headerSize,
 		chunkStart = 0, chunkId = 0,
 		typeBuffer = new Uint8Array(4),
@@ -873,42 +881,52 @@ let Seamstress = class Seamstress {
 						case 3: {
 							// Type read
 							typeBuffer[readState] = e;
-							if ((upThis.type & upThis.MASK_TYPE) === upThis.TYPE_4CC) {
-								readState ++;
-							} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-								// RVLV-8 types
-								let rvlvState = e & IntegerHandler.MASK_RVLV;
-								if (readState === 0) {
-									if (rvlvState === IntegerHandler.RVLV_SINGLE) {
-										readState = 4;
-										ptr ++;
-										break;
-									} else if (rvlvState !== IntegerHandler.RVLV_START) {
-										throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
-									};
+							switch (upThis.type & upThis.MASK_TYPE) {
+								case upThis.TYPE_4CC: {
 									readState ++;
-								} else if (readState === 3) {
-									if (rvlvState !== IntegerHandler.RVLV_END) {
-										throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
-									};
-									readState = 4;
-								} else if (rvlvState === IntegerHandler.RVLV_END) {
-									readState = 4;
-								} else {
-									readState ++;
+									break;
 								};
-							} else {
-								// VLV-8 types
-								let vlvState = e & IntegerHandler.MASK_VLV;
-								if (readState === 3) {
-									if (vlvState) {
-										throw(new Error(`Invalid VLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+								case upThis.TYPE_VLV: {
+									if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+										// RVLV-8 types
+										let rvlvState = e & IntegerHandler.MASK_RVLV;
+										if (readState === 0) {
+											if (rvlvState === IntegerHandler.RVLV_SINGLE) {
+												readState = 4;
+												ptr ++;
+												break;
+											} else if (rvlvState !== IntegerHandler.RVLV_START) {
+												throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
+											};
+											readState ++;
+										} else if (readState === 3) {
+											if (rvlvState !== IntegerHandler.RVLV_END) {
+												throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
+											};
+											readState = 4;
+										} else if (rvlvState === IntegerHandler.RVLV_END) {
+											readState = 4;
+										} else {
+											readState ++;
+										};
+									} else {
+										// VLV-8 types
+										let vlvState = e & IntegerHandler.MASK_VLV;
+										if (readState === 3) {
+											if (vlvState) {
+												throw(new Error(`Invalid VLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+											};
+											readState = 4;
+										} else if (vlvState) {
+											readState ++;
+										} else {
+											readState = 4;
+										};
 									};
-									readState = 4;
-								} else if (vlvState) {
-									readState ++;
-								} else {
-									readState = 4;
+									break;
+								};
+								default: {
+									throw(new Error(`Chunk type not implemented.`));
 								};
 							};
 							break;
@@ -922,42 +940,52 @@ let Seamstress = class Seamstress {
 						case 7: {
 							// Size read
 							sizeBuffer[readState - 4] = e;
-							if ((upThis.type & upThis.MASK_LENGTH) === upThis.LENGTH_U32) {
-								readState ++;
-							} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-								// RVLV-8 sizes
-								let rvlvState = e & IntegerHandler.MASK_RVLV;
-								if (readState === 4) {
-									if (rvlvState === IntegerHandler.RVLV_SINGLE) {
-										readState = 8;
-										ptr ++;
-										break;
-									} else if (rvlvState !== IntegerHandler.RVLV_START) {
-										throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
-									};
+							switch (upThis.type & upThis.MASK_LENGTH) {
+								case upThis.LENGTH_U32: {
 									readState ++;
-								} else if (readState === 7) {
-									if (rvlvState !== IntegerHandler.RVLV_END) {
-										throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
-									};
-									readState = 8;
-								} else if (rvlvState === IntegerHandler.RVLV_END) {
-									readState = 8;
-								} else {
-									readState ++;
+									break;
 								};
-							} else {
-								// VLV-8 sizes
-								let vlvState = e & IntegerHandler.MASK_VLV;
-								if (readState === 7) {
-									if (vlvState) {
-										throw(new Error(`Invalid VLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+								case upThis.LENGTH_VLV: {
+									if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+										// RVLV-8 sizes
+										let rvlvState = e & IntegerHandler.MASK_RVLV;
+										if (readState === 4) {
+											if (rvlvState === IntegerHandler.RVLV_SINGLE) {
+												readState = 8;
+												ptr ++;
+												break;
+											} else if (rvlvState !== IntegerHandler.RVLV_START) {
+												throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
+											};
+											readState ++;
+										} else if (readState === 7) {
+											if (rvlvState !== IntegerHandler.RVLV_END) {
+												throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
+											};
+											readState = 8;
+										} else if (rvlvState === IntegerHandler.RVLV_END) {
+											readState = 8;
+										} else {
+											readState ++;
+										};
+									} else {
+										// VLV-8 sizes
+										let vlvState = e & IntegerHandler.MASK_VLV;
+										if (readState === 7) {
+											if (vlvState) {
+												throw(new Error(`Invalid VLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+											};
+											readState = 8;
+										} else if (vlvState) {
+											readState ++;
+										} else {
+											readState = 8;
+										};
 									};
-									readState = 8;
-								} else if (vlvState) {
-									readState ++;
-								} else {
-									readState = 8;
+									break;
+								};
+								default: {
+									throw(new Error(`Length type not implemented.`));
 								};
 							};
 							break;
@@ -971,22 +999,42 @@ let Seamstress = class Seamstress {
 						// Read both type and size at once.
 						chunkType = undefined;
 						chunkSize = undefined;
-						if ((upThis.type & upThis.MASK_TYPE) === upThis.TYPE_4CC) {
-							chunkType = upThis.#l9Dec.decode(typeBuffer);
-						} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-							chunkType = IntegerHandler.readRVLV(typeBuffer);
-						} else {
-							chunkType = IntegerHandler.readVLV(typeBuffer);
+						switch (upThis.type & upThis.MASK_TYPE) {
+							case upThis.TYPE_4CC: {
+								chunkType = upThis.#l9Dec.decode(typeBuffer);
+								break;
+							};
+							case upThis.TYPE_VLV: {
+								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									chunkType = IntegerHandler.readRVLV(typeBuffer);
+								} else {
+									chunkType = IntegerHandler.readVLV(typeBuffer);
+								};
+								break;
+							};
+							default: {
+								throw(new Error(`Chunk type not implemented.`));
+							};
 						};
 						if (typeof chunkType === "undefined") {
 							throw(new Error(`${dPrefix2}: Chunk type read failed.`));
 						};
-						if ((upThis.type & upThis.MASK_LENGTH) === upThis.LENGTH_U32) {
-							chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
-						} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-							chunkSize = IntegerHandler.readRVLV(sizeBuffer);
-						} else {
-							chunkSize = IntegerHandler.readVLV(sizeBuffer);
+						switch (upThis.type & upThis.MASK_LENGTH) {
+							case upThis.LENGTH_U32: {
+								chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
+								break;
+							};
+							case upThis.LENGTH_VLV: {
+								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									chunkSize = IntegerHandler.readRVLV(sizeBuffer);
+								} else {
+									chunkSize = IntegerHandler.readVLV(sizeBuffer);
+								}
+								break;
+							};
+							default: {
+								throw(new Error(`Length type not implemented.`));
+							};
 						};
 						if (typeof chunkSize === "undefined") {
 							throw(new Error(`${dPrefix2}: Chunk size read failed.`));
@@ -1270,6 +1318,9 @@ let Seamstress = class Seamstress {
 	writeChunks(serializedHeader) {};
 	async getMapFromStream(stream) {
 		let upThis = this;
+		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
+			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
+		};
 		let skipLength = upThis.headerSize,
 		chunkStart = 0,
 		typeBuffer = new Uint8Array(4),
@@ -1303,40 +1354,50 @@ let Seamstress = class Seamstress {
 					case 3: {
 						// Type read
 						typeBuffer[readState] = e;
-						if ((upThis.type & upThis.MASK_TYPE) === upThis.TYPE_4CC) {
-							readState ++;
-						} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-							// RVLV-8 types
-							let rvlvState = e & IntegerHandler.MASK_RVLV;
-							if (readState === 0) {
-								if (rvlvState === IntegerHandler.RVLV_SINGLE) {
-									readState = 4;
-								} else if (rvlvState !== IntegerHandler.RVLV_START) {
-									throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
-								};
+						switch (upThis.type & upThis.MASK_TYPE) {
+							case upThis.TYPE_4CC: {
 								readState ++;
-							} else if (readState === 3) {
-								if (rvlvState !== IntegerHandler.RVLV_END) {
-									throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
-								};
-								readState = 4;
-							} else if (rvlvState === IntegerHandler.RVLV_END) {
-								readState = 4;
-							} else {
-								readState ++;
+								break;
 							};
-						} else {
-							// VLV-8 types
-							let vlvState = e & IntegerHandler.MASK_VLV;
-							if (readState === 3) {
-								if (vlvState) {
-									throw(new Error(`Invalid VLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+							case upThis.TYPE_VLV: {
+								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									// RVLV-8 types
+									let rvlvState = e & IntegerHandler.MASK_RVLV;
+									if (readState === 0) {
+										if (rvlvState === IntegerHandler.RVLV_SINGLE) {
+											readState = 4;
+										} else if (rvlvState !== IntegerHandler.RVLV_START) {
+											throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
+										};
+										readState ++;
+									} else if (readState === 3) {
+										if (rvlvState !== IntegerHandler.RVLV_END) {
+											throw(new Error(`Invalid RVLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
+										};
+										readState = 4;
+									} else if (rvlvState === IntegerHandler.RVLV_END) {
+										readState = 4;
+									} else {
+										readState ++;
+									};
+								} else {
+									// VLV-8 types
+									let vlvState = e & IntegerHandler.MASK_VLV;
+									if (readState === 3) {
+										if (vlvState) {
+											throw(new Error(`Invalid VLV-8 type read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+										};
+										readState = 4;
+									} else if (vlvState) {
+										readState ++;
+									} else {
+										readState = 4;
+									};
 								};
-								readState = 4;
-							} else if (vlvState) {
-								readState ++;
-							} else {
-								readState = 4;
+								break;
+							};
+							default: {
+								throw(new Error(`Chunk type not implemented.`));
 							};
 						};
 						break;
@@ -1350,40 +1411,50 @@ let Seamstress = class Seamstress {
 					case 7: {
 						// Size read
 						sizeBuffer[readState - 4] = e;
-						if ((upThis.type & upThis.MASK_LENGTH) === upThis.LENGTH_U32) {
-							readState ++;
-						} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-							// RVLV-8 sizes
-							let rvlvState = e & IntegerHandler.MASK_RVLV;
-							if (readState === 4) {
-								if (rvlvState === IntegerHandler.RVLV_SINGLE) {
-									readState = 8;
-								} else if (rvlvState !== IntegerHandler.RVLV_START) {
-									throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
-								};
+						switch (upThis.type & upThis.MASK_LENGTH) {
+							case upThis.LENGTH_U32: {
 								readState ++;
-							} else if (readState === 7) {
-								if (rvlvState !== IntegerHandler.RVLV_END) {
-									throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
-								};
-								readState = 8;
-							} else if (rvlvState === IntegerHandler.RVLV_END) {
-								readState = 8;
-							} else {
-								readState ++;
+								break;
 							};
-						} else {
-							// VLV-8 sizes
-							let vlvState = e & IntegerHandler.MASK_VLV;
-							if (readState === 7) {
-								if (vlvState) {
-									throw(new Error(`Invalid VLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+							case upThis.LENGTH_VLV: {
+								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									// RVLV-8 sizes
+									let rvlvState = e & IntegerHandler.MASK_RVLV;
+									if (readState === 4) {
+										if (rvlvState === IntegerHandler.RVLV_SINGLE) {
+											readState = 8;
+										} else if (rvlvState !== IntegerHandler.RVLV_START) {
+											throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not start RVLV-8 on the first byte.`));
+										};
+										readState ++;
+									} else if (readState === 7) {
+										if (rvlvState !== IntegerHandler.RVLV_END) {
+											throw(new Error(`Invalid RVLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end RVLV-8 on the last possible byte.`));
+										};
+										readState = 8;
+									} else if (rvlvState === IntegerHandler.RVLV_END) {
+										readState = 8;
+									} else {
+										readState ++;
+									};
+								} else {
+									// VLV-8 sizes
+									let vlvState = e & IntegerHandler.MASK_VLV;
+									if (readState === 7) {
+										if (vlvState) {
+											throw(new Error(`Invalid VLV-8 size read state ${readState} encountered at offset ${chunkStart + ptr}: Did not end VLV-8 on the last possible byte.`));
+										};
+										readState = 8;
+									} else if (vlvState) {
+										readState ++;
+									} else {
+										readState = 8;
+									};
 								};
-								readState = 8;
-							} else if (vlvState) {
-								readState ++;
-							} else {
-								readState = 8;
+								break;
+							};
+							default: {
+								throw(new Error(`Length type not implemented.`));
 							};
 						};
 						break;
@@ -1395,22 +1466,41 @@ let Seamstress = class Seamstress {
 				if (readState === 8) {
 					// Read both type and size at once.
 					let chunkType, chunkSize;
-					if ((upThis.type & upThis.MASK_TYPE) === upThis.TYPE_4CC) {
-						chunkType = upThis.#l9Dec.decode(typeBuffer);
-					} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-						chunkType = IntegerHandler.readRVLV(typeBuffer);
-					} else {
-						chunkType = IntegerHandler.readVLV(typeBuffer);
+					switch (upThis.type & upThis.MASK_TYPE) {
+						case upThis.TYPE_4CC: {
+							chunkType = upThis.#l9Dec.decode(typeBuffer);
+							break;
+						};
+						case upThis.TYPE_VLV: {
+							if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+								chunkType = IntegerHandler.readRVLV(typeBuffer);
+							} else {
+								chunkType = IntegerHandler.readVLV(typeBuffer);
+							}
+							break;
+						};
+						default: {
+							throw(new Error(`Chunk type not implemented.`));
+						};
 					};
 					if (typeof chunkType === "undefined") {
 						throw(new Error(`Chunk type read failed at offset ${chunkStart + ptr}.`));
 					};
-					if ((upThis.type & upThis.MASK_LENGTH) === upThis.LENGTH_U32) {
-						chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
-					} else if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
-						chunkSize = IntegerHandler.readRVLV(sizeBuffer);
-					} else {
-						chunkSize = IntegerHandler.readVLV(sizeBuffer);
+					switch (upThis.type & upThis.MASK_LENGTH) {
+						case upThis.LENGTH_U32: {
+							chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
+							break;
+						};
+						case upThis.LENGTH_VLV: {
+							if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+								chunkSize = IntegerHandler.readRVLV(sizeBuffer);
+							} else {
+								chunkSize = IntegerHandler.readVLV(sizeBuffer);
+							};
+						};
+						default: {
+							throw(new Error(`Length type not implemented.`));
+						};
 					};
 					if (typeof chunkSize === "undefined") {
 						throw(new Error(`Chunk size read failed at offset ${chunkStart + ptr}.`));
