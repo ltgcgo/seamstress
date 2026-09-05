@@ -218,18 +218,28 @@ export class Seamstress {
 	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian.
 	*/
 	MASK_ENDIAN: number;
+	static readonly MASK_ENDIAN: number;
 	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" is invalid and will error out. */
 	MASK_LENGTH: number;
+	static readonly MASK_LENGTH: number;
 	/** Masks the boolean of if the chunk payloads are padded or not. A true value will treat chunks as padded to even bytes. */
 	MASK_PADDED: number;
-	/** Masks type of type chunks. 0 for VLV-8, 1 for FourCC (i32 BE). */
+	static readonly MASK_PADDED: number;
+	/** Masks type of type chunks. 0 for VLV-8, 1 for byte (`u8`), 2 for FourCC (`i32be`). */
 	MASK_TYPE: number;
+	static readonly MASK_TYPE: number;
 	ENDIAN_B: number;
 	ENDIAN_L: number;
 	LENGTH_VLV: number;
 	LENGTH_U32: number;
 	TYPE_VLV: number;
 	TYPE_4CC: number;
+	static readonly ENDIAN_B: number;
+	static readonly ENDIAN_L: number;
+	static readonly LENGTH_VLV: number;
+	static readonly LENGTH_U32: number;
+	static readonly TYPE_VLV: number;
+	static readonly TYPE_4CC: number;
 	/** Set to true to emit verbose debug messages. */
 	debugMode: boolean;
 	/** (WIP) Returns if the list chunk type already exists. Only valid with FourCC types. */
