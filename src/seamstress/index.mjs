@@ -136,7 +136,7 @@ let IntegerHandler = class IntegerHandler {
 	};
 	static readVLV(buffer, offset = 0) {
 		// VLV-8 are all big-endian.
-		let upThis = this;
+		const upThis = this;
 		upThis.#ensureU8(buffer);
 		let breakCrit = Math.min(buffer.length - offset, 4),
 		breakTest = breakCrit - 1,
@@ -170,7 +170,7 @@ let IntegerHandler = class IntegerHandler {
 	};
 	static readVLVBigInt(buffer, offset = 0) {
 		// VLV-8 are all big-endian.
-		let upThis = this;
+		const upThis = this;
 		upThis.#ensureU8(buffer);
 		let breakCrit = Math.min(buffer.length - offset, 16),
 		breakTest = breakCrit - 1,
@@ -661,7 +661,7 @@ const Seamstress = class Seamstress {
 		return summedBuffer;
 	};
 	async #enqueueCascade(data, defaultHost, preferredHost) {
-		let upThis = this;
+		const upThis = this;
 		let dPrefix = `[Seamstress ENQU] Stream depth ${data.depth}, chunk ${data.id} (${data.chunkId}), type "${data.type}", size ${data.data.length} B (0x${(data.offsetData).toString(16)}, ${data.offsetStream}, ${data.offset})`;
 		let isChild = preferredHost?.closed === false;
 		upThis.debugMode && console.debug(`${dPrefix}: Sending to ${isChild ? "child" : "parent"} scheduled.`);
@@ -723,28 +723,7 @@ const Seamstress = class Seamstress {
 	useCollection = false;
 	/** @returns {ReadableStream<SeamstressChunk>} */
 	#readStreamInternal(stream, dropData = false) {
-		let upThis = this;
-		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
-			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
-		};
-		switch (upThis.type & upThis.MASK_LENGTH) {
-			case upThis.LENGTH_VLV:
-			case upThis.LENGTH_U32: {
-				break;
-			};
-			default: {
-				throw(new Error(`Length type not implemented.`));
-			};
-		};
-		switch (upThis.type & upThis.MASK_TYPE) {
-			case upThis.TYPE_VLV:
-			case upThis.TYPE_4CC: {
-				break;
-			};
-			default: {
-				throw(new Error(`Chunk type not implemented.`));
-			};
-		};
+		const upThis = this;
 		let skipLength = upThis.headerSize,
 		chunkStart = 0, chunkId = 0,
 		typeBuffer = new Uint8Array(4),
@@ -1184,7 +1163,7 @@ const Seamstress = class Seamstress {
 	};
 	regulateStream;
 	readRegulated(stream, flushAll = false) {
-		let upThis = this;
+		const upThis = this;
 		if (typeof upThis.regulateStream !== "function") {
 			throw(new TypeError("The stream regulator must be a defined function."));
 		};
@@ -1264,7 +1243,7 @@ const Seamstress = class Seamstress {
 		return streamHost.readable;
 	};
 	readChunks(stream, flushAll = false) {
-		let upThis = this;
+		const upThis = this;
 		let streamHost = new StreamQueue();
 		let unbuffered = upThis.#readStreamInternal(stream); // What was the original `true` as the 2nd argument for?
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
@@ -1336,10 +1315,7 @@ const Seamstress = class Seamstress {
 	writeStrict(headerSerializer) {};
 	writeChunks(serializedHeader) {};
 	async getMapFromStream(stream) {
-		let upThis = this;
-		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
-			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
-		};
+		const upThis = this;
 		let skipLength = upThis.headerSize,
 		chunkStart = 0,
 		typeBuffer = new Uint8Array(4),
@@ -1548,7 +1524,33 @@ const Seamstress = class Seamstress {
 		};
 		return map;
 	};
-	constructor() {
+	constructor(typeFlags) {
+		if (typeof typeFlags !== "number") {
+			throw(new TypeError(`Stream type flags must be defined as an integer.`));
+		};
+		if (!Number.isSafeInteger(typeFlags)) {
+			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
+		};
+		const upThis = this;
+		switch (typeFlags & upThis.MASK_LENGTH) {
+			case upThis.LENGTH_VLV:
+			case upThis.LENGTH_U32: {
+				break;
+			};
+			default: {
+				throw(new Error(`Length type not implemented.`));
+			};
+		};
+		switch (typeFlags & upThis.MASK_TYPE) {
+			case upThis.TYPE_VLV:
+			case upThis.TYPE_4CC: {
+				break;
+			};
+			default: {
+				throw(new Error(`Chunk type not implemented.`));
+			};
+		};
+		this.type = typeFlags;
 		this.addCollection("LIST");
 	};
 };

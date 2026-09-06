@@ -239,7 +239,7 @@ export class Seamstress {
 	/** The type flags of the Seamstress instance. Seamstress will error out if this is not a valid integer.
 	*
 	* Do NOT hard code numeric literals for type flags, construct the bit-fields on-demand instead. You can reuse the constructed bit-fields. */
-	type: number;
+	readonly type: number;
 	/** Additional context applicable to all subsequent chunks that affects reader behaviour. */
 	meta?: SeamstressContext;
 	/** Handles the header chunk, specified manually. Called by all stream readers. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
@@ -272,4 +272,6 @@ export class Seamstress {
 	*
 	* This function is virtually useless if the original content of the stream is not kept. This function does *not* handle list chunks. */
 	getMapFromStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): Promise<Map<number|string, Array<Array<number>>>>;
+	/** @param typeFlags The type flags of the Seamstress instance. Check `Seamstress.type` for details. */
+	constructor(typeFlags: number);
 }
