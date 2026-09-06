@@ -268,7 +268,7 @@ export class Seamstress {
 	*
 	* This function does *not* natively handle list chunks by itself. */
 	writeChunks(serializedHeader?: Uint8Array): TransformStream<SeamstressChunk, Uint8Array>;
-	/** Parses the incoming stream, and emits a map of header types, each with an array of offsets and sizes.
+	/** Parses the incoming stream, and emits a map of chunk types, each with an array of `[Seamstress.offsetData, Seamstress.size]` pairs.
 	*
 	* This function is virtually useless if the original content of the stream is not kept. This function does *not* handle list chunks. */
 	getMapFromStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): Promise<Map<number|string, Array<Array<number>>>>;
