@@ -895,6 +895,13 @@ const Seamstress = class Seamstress {
 									readState ++;
 									break;
 								};
+								case upThis.TYPE_UI8: {
+									if (readState !== 0) {
+										throw(new Error(`Invalid read state for type.`));
+									};
+									readState = 4;
+									break;
+								};
 								case upThis.TYPE_VLV: {
 									if ((upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
 										// RVLV-8 types
@@ -1005,6 +1012,10 @@ const Seamstress = class Seamstress {
 						switch (upThis.#type & upThis.MASK_TYPE) {
 							case upThis.TYPE_4CC: {
 								chunkType = upThis.#l9Dec.decode(typeBuffer);
+								break;
+							};
+							case upThis.TYPE_UI8: {
+								chunkType = typeBuffer[0];
 								break;
 							};
 							case upThis.TYPE_VLV: {
@@ -1387,6 +1398,7 @@ const Seamstress = class Seamstress {
 		};
 		switch (typeFlags & upThis.MASK_TYPE) {
 			case upThis.TYPE_VLV:
+			case upThis.TYPE_UI8:
 			case upThis.TYPE_4CC: {
 				break;
 			};
