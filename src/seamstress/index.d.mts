@@ -114,7 +114,7 @@ export interface SeamstressContext {
 /**
 * A subchunk of a Seamstress stream. Can be non-buffered, slightly buffered or fully buffered.
 */
-export interface SeamstressChunk {
+export class SeamstressChunk {
 	/** Index of the (streamed) chunk in u32, starts from 0 and increases by 1 only when a new chunk is progressed. This is to easily differentiate chunks. */
 	id: number;
 	/** Cumulative index of the current chunk in u32, starts from 0 and increases by 1 when a new chunk of the same type is progressed. */
@@ -125,11 +125,11 @@ export interface SeamstressChunk {
 	typePath?: string[];
 	/** If the current chunk is a child of a parent chunk (e.g. `LIST`), this property will contain the use (e.g. list chunk types) of all parent chunks. */
 	typeUses?: string[];
-	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to 0. */
+	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to `0`. */
 	offset: number;
 	/** (WIP) The offset of the current data (sub)chunk compared to the rest of the scoped binary stream session. */
 	offsetStream: number;
-	/** The offset of the current data (sub)chunk compared to the rest of the full binary stream instance. */
+	/** The offset of the current data (sub)chunk compared to the rest of the full binary stream instance, like the offset within a file. */
 	offsetData: number;
 	/** The full size of the current chunk. */
 	size: number;
