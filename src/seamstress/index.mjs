@@ -701,7 +701,7 @@ let Seamstress = class Seamstress {
 		};
 	};
 	headerSize = 0;
-	type = 0; // 0 for non-reversible SEAM stream, 10 for SMF
+	type = 0; // 0 for non-reversible SEAM stream
 	meta = {
 		seamstressDepth: 0,
 		seamstressOffset: 0,
@@ -726,6 +726,24 @@ let Seamstress = class Seamstress {
 		let upThis = this;
 		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
 			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
+		};
+		switch (upThis.type & upThis.MASK_LENGTH) {
+			case upThis.LENGTH_VLV:
+			case upThis.LENGTH_U32: {
+				break;
+			};
+			default: {
+				throw(new Error(`Length type not implemented.`));
+			};
+		};
+		switch (upThis.type & upThis.MASK_TYPE) {
+			case upThis.TYPE_VLV:
+			case upThis.TYPE_4CC: {
+				break;
+			};
+			default: {
+				throw(new Error(`Chunk type not implemented.`));
+			};
 		};
 		let skipLength = upThis.headerSize,
 		chunkStart = 0, chunkId = 0,
@@ -925,9 +943,6 @@ let Seamstress = class Seamstress {
 									};
 									break;
 								};
-								default: {
-									throw(new Error(`Chunk type not implemented.`));
-								};
 							};
 							break;
 						};
@@ -984,9 +999,6 @@ let Seamstress = class Seamstress {
 									};
 									break;
 								};
-								default: {
-									throw(new Error(`Length type not implemented.`));
-								};
 							};
 							break;
 						};
@@ -1012,9 +1024,6 @@ let Seamstress = class Seamstress {
 								};
 								break;
 							};
-							default: {
-								throw(new Error(`Chunk type not implemented.`));
-							};
 						};
 						if (typeof chunkType === "undefined") {
 							throw(new Error(`${dPrefix2}: Chunk type read failed.`));
@@ -1031,9 +1040,6 @@ let Seamstress = class Seamstress {
 									chunkSize = IntegerHandler.readVLV(sizeBuffer);
 								}
 								break;
-							};
-							default: {
-								throw(new Error(`Length type not implemented.`));
 							};
 						};
 						if (typeof chunkSize === "undefined") {
@@ -1246,6 +1252,27 @@ let Seamstress = class Seamstress {
 	};
 	readChunks(stream, flushAll = false) {
 		let upThis = this;
+		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
+			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
+		};
+		switch (upThis.type & upThis.MASK_LENGTH) {
+			case upThis.LENGTH_VLV:
+			case upThis.LENGTH_U32: {
+				break;
+			};
+			default: {
+				throw(new Error(`Length type not implemented.`));
+			};
+		};
+		switch (upThis.type & upThis.MASK_TYPE) {
+			case upThis.TYPE_VLV:
+			case upThis.TYPE_4CC: {
+				break;
+			};
+			default: {
+				throw(new Error(`Chunk type not implemented.`));
+			};
+		};
 		let streamHost = new StreamQueue();
 		let unbuffered = upThis.readStream(stream, true);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
@@ -1396,9 +1423,6 @@ let Seamstress = class Seamstress {
 								};
 								break;
 							};
-							default: {
-								throw(new Error(`Chunk type not implemented.`));
-							};
 						};
 						break;
 					};
@@ -1478,9 +1502,6 @@ let Seamstress = class Seamstress {
 								chunkType = IntegerHandler.readVLV(typeBuffer);
 							}
 							break;
-						};
-						default: {
-							throw(new Error(`Chunk type not implemented.`));
 						};
 					};
 					if (typeof chunkType === "undefined") {
