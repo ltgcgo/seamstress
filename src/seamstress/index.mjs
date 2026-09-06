@@ -1031,9 +1031,14 @@ const Seamstress = class Seamstress {
 							throw(new Error(`${dPrefix2}: Chunk size read failed.`));
 						} else {
 							skipLength = chunkSize;
-							if ((upThis.type & upThis.MASK_PADDED) && (chunkSize & 1)) {
-								// Pad to a multiple of 2 when specified.
-								skipLength += 1;
+							switch (upThis.type & upThis.MASK_PADDED) {
+								case upThis.PAD_EVEN: {
+									if (chunkSize & 1) {
+										// Pad to a multiple of 2 when specified.
+										skipLength += 1;
+									};
+									break;
+								};
 							};
 						};
 						shouldEnqueue = true;
@@ -1096,8 +1101,13 @@ const Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
-								if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
-									subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+								switch (upThis.type & upThis.MASK_PADDED) {
+									case upThis.PAD_EVEN: {
+										if (subchunkData.size & 1) {
+											subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+										};
+										break;
+									};
 								};
 							};
 							subchunkData.offsetStream = chunkStart + ptr;
@@ -1113,8 +1123,13 @@ const Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr);
-								if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
-									subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+								switch (upThis.type & upThis.MASK_PADDED) {
+									case upThis.PAD_EVEN: {
+										if (subchunkData.size & 1) {
+											subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+										};
+										break;
+									};
 								};
 							};
 							subchunkData.offsetStream = chunkStart + ptr;
@@ -1253,8 +1268,18 @@ const Seamstress = class Seamstress {
 			for await (let unbufferedChunk of unbuffered) {
 				let sizeSum = unbufferedChunk.offset + unbufferedChunk.data.length;
 				if (sizeSum > unbufferedChunk.size) {
-					if (!(upThis.type & upThis.MASK_PADDED && unbufferedChunk.size + 1 === sizeSum)) {
-						throw(new Error(`The total sum of size exceeded declaration (${sizeSum} > ${unbufferedChunk.size}).`));
+					const errorMessage = `The total sum of size exceeded declaration (${sizeSum} > ${unbufferedChunk.size}).`;
+					switch (upThis.type & upThis.MASK_PADDED) {
+						case upThis.PAD_NONE: {
+							throw(new Error(errorMessage));
+							break;
+						};
+						case upThis.PAD_EVEN: {
+							if (unbufferedChunk.size + 1 !== sizeSum) {
+								throw(new Error(errorMessage));
+							};
+							break;
+						};
 					};
 				} else if (sizeSum === unbufferedChunk.size) {
 					// Commit now!
@@ -1343,6 +1368,15 @@ const Seamstress = class Seamstress {
 			};
 			default: {
 				throw(new Error(`Length type not implemented.`));
+			};
+		};
+		switch (typeFlags & upThis.MASK_PADDED) {
+			case upThis.PAD_NONE:
+			case upThis.PAD_EVEN: {
+				break;
+			};
+			default: {
+				throw(new Error(`Padding type not implemented.`));
 			};
 		};
 		switch (typeFlags & upThis.MASK_TYPE) {
