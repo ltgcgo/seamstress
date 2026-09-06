@@ -629,6 +629,7 @@ const Seamstress = class Seamstress {
 	debugMode = false;
 	#l9Dec = new TextDecoder("l9");
 	#listChunks = new Set();
+	#type = 0;
 	#increaseInMap(map, key) {
 		if (map.has(key)) {
 			let value = map.get(key);
@@ -701,7 +702,12 @@ const Seamstress = class Seamstress {
 		};
 	};
 	headerSize = 0;
-	type = 0; // 0 for non-reversible SEAM stream
+	get type() {
+		return this.#type;
+	};
+	/*set type(value) {
+		throw(new Error(`Attempted to write to a read-only property.`));
+	};*/
 	meta = {
 		seamstressDepth: 0,
 		seamstressOffset: 0,
@@ -746,7 +752,7 @@ const Seamstress = class Seamstress {
 		childStreamHeaderSize = 0,
 		childStreamHeaderHandler;
 		if (handleCollections) {
-			switch (upThis.type & upThis.MASK_TYPE) {
+			switch (upThis.#type & upThis.MASK_TYPE) {
 				case upThis.TYPE_4CC: {
 					childStreamHeaderSize = 4;
 					childStreamHeaderHandler = seamstressListUseHandlerFourCC;
@@ -764,7 +770,7 @@ const Seamstress = class Seamstress {
 			childStreamRead = new Seamstress();
 			childStreamRead.headerSize = childStreamHeaderSize;
 			childStreamRead.headerHandler = childStreamHeaderHandler;
-			childStreamRead.type = upThis.type;
+			childStreamRead.type = upThis.#type;
 		};
 		//streamHost.debugMode = true;
 		let chunkType, chunkSize;
@@ -884,13 +890,13 @@ const Seamstress = class Seamstress {
 						case 3: {
 							// Type read
 							typeBuffer[readState] = e;
-							switch (upThis.type & upThis.MASK_TYPE) {
+							switch (upThis.#type & upThis.MASK_TYPE) {
 								case upThis.TYPE_4CC: {
 									readState ++;
 									break;
 								};
 								case upThis.TYPE_VLV: {
-									if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									if ((upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
 										// RVLV-8 types
 										let rvlvState = e & IntegerHandler.MASK_RVLV;
 										if (readState === 0) {
@@ -940,13 +946,13 @@ const Seamstress = class Seamstress {
 						case 7: {
 							// Size read
 							sizeBuffer[readState - 4] = e;
-							switch (upThis.type & upThis.MASK_LENGTH) {
+							switch (upThis.#type & upThis.MASK_LENGTH) {
 								case upThis.LENGTH_U32: {
 									readState ++;
 									break;
 								};
 								case upThis.LENGTH_VLV: {
-									if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+									if ((upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
 										// RVLV-8 sizes
 										let rvlvState = e & IntegerHandler.MASK_RVLV;
 										if (readState === 4) {
@@ -996,13 +1002,13 @@ const Seamstress = class Seamstress {
 						// Read both type and size at once.
 						chunkType = undefined;
 						chunkSize = undefined;
-						switch (upThis.type & upThis.MASK_TYPE) {
+						switch (upThis.#type & upThis.MASK_TYPE) {
 							case upThis.TYPE_4CC: {
 								chunkType = upThis.#l9Dec.decode(typeBuffer);
 								break;
 							};
 							case upThis.TYPE_VLV: {
-								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+								if ((upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
 									chunkType = IntegerHandler.readRVLV(typeBuffer);
 								} else {
 									chunkType = IntegerHandler.readVLV(typeBuffer);
@@ -1013,13 +1019,13 @@ const Seamstress = class Seamstress {
 						if (typeof chunkType === "undefined") {
 							throw(new Error(`${dPrefix2}: Chunk type read failed.`));
 						};
-						switch (upThis.type & upThis.MASK_LENGTH) {
+						switch (upThis.#type & upThis.MASK_LENGTH) {
 							case upThis.LENGTH_U32: {
-								chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
+								chunkSize = IntegerHandler.readUint32(sizeBuffer, (upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L);
 								break;
 							};
 							case upThis.LENGTH_VLV: {
-								if ((upThis.type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
+								if ((upThis.#type & upThis.MASK_ENDIAN) === upThis.ENDIAN_L) {
 									chunkSize = IntegerHandler.readRVLV(sizeBuffer);
 								} else {
 									chunkSize = IntegerHandler.readVLV(sizeBuffer);
@@ -1031,7 +1037,7 @@ const Seamstress = class Seamstress {
 							throw(new Error(`${dPrefix2}: Chunk size read failed.`));
 						} else {
 							skipLength = chunkSize;
-							switch (upThis.type & upThis.MASK_PADDED) {
+							switch (upThis.#type & upThis.MASK_PADDED) {
 								case upThis.PAD_EVEN: {
 									if (chunkSize & 1) {
 										// Pad to a multiple of 2 when specified.
@@ -1101,7 +1107,7 @@ const Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
-								switch (upThis.type & upThis.MASK_PADDED) {
+								switch (upThis.#type & upThis.MASK_PADDED) {
 									case upThis.PAD_EVEN: {
 										if (subchunkData.size & 1) {
 											subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
@@ -1123,7 +1129,7 @@ const Seamstress = class Seamstress {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr);
-								switch (upThis.type & upThis.MASK_PADDED) {
+								switch (upThis.#type & upThis.MASK_PADDED) {
 									case upThis.PAD_EVEN: {
 										if (subchunkData.size & 1) {
 											subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
@@ -1269,7 +1275,7 @@ const Seamstress = class Seamstress {
 				let sizeSum = unbufferedChunk.offset + unbufferedChunk.data.length;
 				if (sizeSum > unbufferedChunk.size) {
 					const errorMessage = `The total sum of size exceeded declaration (${sizeSum} > ${unbufferedChunk.size}).`;
-					switch (upThis.type & upThis.MASK_PADDED) {
+					switch (upThis.#type & upThis.MASK_PADDED) {
 						case upThis.PAD_NONE: {
 							throw(new Error(errorMessage));
 							break;
@@ -1388,8 +1394,8 @@ const Seamstress = class Seamstress {
 				throw(new Error(`Chunk type not implemented.`));
 			};
 		};
-		this.type = typeFlags;
-		this.addCollection("LIST");
+		upThis.#type = typeFlags;
+		upThis.addCollection("LIST");
 	};
 };
 
