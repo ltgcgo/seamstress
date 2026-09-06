@@ -599,7 +599,7 @@ const seamstressListUseHandlerFourCC = function (buffer) {
 	};
 };
 
-let Seamstress = class Seamstress {
+const Seamstress = class Seamstress {
 	static MASK_ENDIAN = 0b00000000_00000001;
 	static MASK_LENGTH = 0b00000000_00000010;
 	static MASK_PADDED = 0b00000000_00001100;
@@ -722,7 +722,7 @@ let Seamstress = class Seamstress {
 	};
 	useCollection = false;
 	/** @returns {ReadableStream<SeamstressChunk>} */
-	readStream(stream) {
+	#readStreamInternal(stream, dropData = false) {
 		let upThis = this;
 		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
 			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
@@ -807,7 +807,9 @@ let Seamstress = class Seamstress {
 				if (skipLength > chunk.length) {
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
-						subchunkData.data = chunk;
+						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
+							subchunkData.data = chunk;
+						};
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
@@ -828,7 +830,9 @@ let Seamstress = class Seamstress {
 					upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should commit the entire chunk and flush the buffer.`);
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
-						subchunkData.data = chunk;
+						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
+							subchunkData.data = chunk;
+						};
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
@@ -857,7 +861,9 @@ let Seamstress = class Seamstress {
 					upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should flush the buffer.`);
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
-						subchunkData.data = chunk.subarray(0, skipLength);
+						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
+							subchunkData.data = chunk.subarray(0, skipLength);
+						};
 						subchunkData.offsetStream = chunkStart;
 						subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
 						subchunkData.context = seamContext;
@@ -1077,7 +1083,7 @@ let Seamstress = class Seamstress {
 								};
 								console.debug(`[Seamstress CHLD] Started a new child stream for chunk "${chunkType}" at depth ${upThis.meta.seamstressDepth}.`);
 								(async () => {
-									for await (let childChunk of childStreamRead.readStream(childStreamHost.readable)) {
+									for await (let childChunk of childStreamRead.#readStreamInternal(childStreamHost.readable)) {
 										console.debug(`[Seamstress WAIT] Waiting for the next chunk from depth ${upThis.meta.seamstressDepth + 1} at depth ${upThis.meta.seamstressDepth}.`);
 										await streamHost.enqueue(childChunk);
 										let childReadBytes = childChunk.offsetStream + childChunk.data.length;
@@ -1109,9 +1115,11 @@ let Seamstress = class Seamstress {
 					if (skipLength > 0 || shouldEnqueue) {
 						if (skipLength + ptr < chunk.length) {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
-							subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
-							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
-								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
+								subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
+								if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
+									subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+								};
 							};
 							subchunkData.offsetStream = chunkStart + ptr;
 							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
@@ -1124,9 +1132,11 @@ let Seamstress = class Seamstress {
 							seamChunkId ++;
 						} else {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
-							subchunkData.data = chunk.subarray(ptr);
-							if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
-								subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
+								subchunkData.data = chunk.subarray(ptr);
+								if (upThis.type & upThis.MASK_PADDED && subchunkData.size & 1) {
+									subchunkData.data = subchunkData.data.subarray(0, subchunkData.data.length - 1);
+								};
 							};
 							subchunkData.offsetStream = chunkStart + ptr;
 							subchunkData.offsetData = (upThis.meta?.seamstressOffset ?? 0) + subchunkData.offsetStream;
@@ -1169,6 +1179,9 @@ let Seamstress = class Seamstress {
 		});
 		return streamHost.readable;
 	};
+	readStream(stream) {
+		return this.#readStreamInternal(stream);
+	};
 	regulateStream;
 	readRegulated(stream, flushAll = false) {
 		let upThis = this;
@@ -1176,7 +1189,7 @@ let Seamstress = class Seamstress {
 			throw(new TypeError("The stream regulator must be a defined function."));
 		};
 		let streamHost = new StreamQueue();
-		let unbuffered = upThis.readStream(stream);
+		let unbuffered = upThis.#readStreamInternal(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let id, chunkId, type, size, context;
 		let isOffsetWritten = false, offset = 0, offsetData = 0, offsetStream = 0;
@@ -1252,29 +1265,8 @@ let Seamstress = class Seamstress {
 	};
 	readChunks(stream, flushAll = false) {
 		let upThis = this;
-		if (typeof upThis.type !== "number" || !Number.isSafeInteger(upThis.type)) {
-			throw(new TypeError(`Stream type flags must be defined as a valid integer.`));
-		};
-		switch (upThis.type & upThis.MASK_LENGTH) {
-			case upThis.LENGTH_VLV:
-			case upThis.LENGTH_U32: {
-				break;
-			};
-			default: {
-				throw(new Error(`Length type not implemented.`));
-			};
-		};
-		switch (upThis.type & upThis.MASK_TYPE) {
-			case upThis.TYPE_VLV:
-			case upThis.TYPE_4CC: {
-				break;
-			};
-			default: {
-				throw(new Error(`Chunk type not implemented.`));
-			};
-		};
 		let streamHost = new StreamQueue();
-		let unbuffered = upThis.readStream(stream, true);
+		let unbuffered = upThis.#readStreamInternal(stream); // What was the original `true` as the 2nd argument for?
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let inProgress = false;
 		let id, chunkId, type, size, context, offsetData, offsetStream;
