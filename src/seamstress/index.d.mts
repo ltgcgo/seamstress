@@ -1,6 +1,16 @@
 // 2025-2026 © Lightingale Community
 // Licensed under GNU LGPL 3.0
 
+import type {
+	int8,
+	int16,
+	int32,
+	int64,
+	uint16,
+	uint32,
+	uint64
+} from "../nativeType/index.d.mts";
+
 /**
 * A safe tag-length-value byte stream handler. Can be customized to handle SMF, IFF, RIFF and more, under the umbrella of SEAM (Simple Extensible Arbitrary Messaging).
 * @license LGPL-3.0-only
@@ -47,22 +57,22 @@ export class IntegerHandler {
 	static readRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads a reversible VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a BigInt. Will be clamped to 16 bytes, after which it will error out. Invalid RVLV values will also error out. */
 	static readRVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): bigint;
-	/** Reads a boolean. Will error out if out of bounds. One byte has 8 individual bits. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
+	/** Reads a boolean, returned as one of `0` (`false`) and `1` (`true`). Will error out if out of bounds. One byte has 8 individual bits. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
 	static readBool(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
 	/** Reads an int8 value. Will error out if out of bounds. */
-	static readInt8(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
+	static readInt8(buffer: Uint8Array|Uint8ClampedArray, offset?: number): int8;
 	/** Reads an int16 value. Will error out if out of bounds. */
-	static readInt16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
+	static readInt16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): int16;
 	/** Reads a uint16 value. Will error out if out of bounds. */
-	static readUint16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
+	static readUint16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): uint16;
 	/** Reads an int32 value. Will error out if out of bounds. */
-	static readInt32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
+	static readInt32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): int32;
 	/** Reads a uint32 value. Will error out if out of bounds. */
-	static readUint32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
+	static readUint32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): uint32;
 	/** Reads an int64 value. Will error out if out of bounds. */
-	static readInt64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
+	static readInt64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): int64;
 	/** Reads a uint64 value. Will error out if out of bounds. */
-	static readUint64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
+	static readUint64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): uint64;
 }
 
 /**

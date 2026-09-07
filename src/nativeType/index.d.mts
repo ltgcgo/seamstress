@@ -61,4 +61,5 @@ export type u128le = int128
 export type byte = uint8
 export type rune = int32
 
-export default class NativeType {}
+export default class NativeType {
+}
