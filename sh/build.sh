@@ -41,24 +41,27 @@ fi
 if [ -d "./src" ]; then
 	echo -e "\033[1;34mBuilding\033[0m: JS."
 	ls -1 src | while IFS= read -r dir ; do
-		if [ -f "src/${dir}/index.wat" ] ; then
-			shx wasm "$dir"
-		fi
 		if [ -f "src/${dir}/index.js" ] ; then
 			echo "Building JS target \"${dir}\"..."
-			shx live $dir --minify $1 > /dev/null
+			shx live $dir "--minify --sourcemap" $1 > /dev/null
 			#sed -zi "$substRules" "dist/${dir}.js"
-			if [ -f "src/${dir}/index.d.ts" ] ; then
-				cp "src/${dir}/index.d.ts" "dist/${dir}.d.ts"
-			fi
+		fi
+		if [ -f "src/${dir}/index.d.ts" ] ; then
+			cp "src/${dir}/index.d.ts" "dist/${dir}.d.ts"
+			sed -zEi 's#from "\.\./([^/]+)/index\.js"#from "./\1.js"#g' "dist/${dir}.d.ts"
+			sed -zEi 's#from "\.\./([^/]+)/index\.d\.ts"#from "./\1.d.ts"#g' "dist/${dir}.d.ts"
+			sed -zEi 's#from "\.\.\/\.\.\/libs\/#from "../libs/#g' "dist/${dir}.d.ts"
 		fi
 		if [ -f "src/${dir}/index.mjs" ] ; then
 			echo "Building JS module \"${dir}\"..."
-			shx live $dir --minify $1 > /dev/null
+			shx live $dir "--minify --sourcemap" $1 > /dev/null
 			#sed -zi "$substRules" "dist/${dir}.mjs"
-			if [ -f "src/${dir}/index.d.mts" ] ; then
-				cp "src/${dir}/index.d.mts" "dist/${dir}.d.mts"
-			fi
+		fi
+		if [ -f "src/${dir}/index.d.mts" ] ; then
+			cp "src/${dir}/index.d.mts" "dist/${dir}.d.mts"
+			sed -zEi 's#from "\.\./([^/]+)/index\.mjs"#from "./\1.mjs"#g' "dist/${dir}.d.mts"
+			sed -zEi 's#from "\.\./([^/]+)/index\.d\.mts"#from "./\1.d.mts"#g' "dist/${dir}.d.mts"
+			sed -zEi 's#from "\.\.\/\.\.\/libs\/#from "../libs/#g' "dist/${dir}.d.mts"
 		fi
 	done
 #else
