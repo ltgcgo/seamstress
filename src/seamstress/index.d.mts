@@ -150,7 +150,7 @@ export class SeamstressChunk {
 	* @param type Same as `SeamstressChunk.type`.
 	* @param offset Same as `SeamstressChunk.offset`.
 	* @param size Same as `SeamstressChunk.size`. */
-	constructor(id: number, chunkId: number, type: number|string, offset: number, size: number): SeamstressChunk;
+	constructor(id: number, chunkId: number, type: number|string, offset: number, size: number);
 }
 
 /**
