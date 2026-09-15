@@ -520,6 +520,7 @@ let IntegerHandler = class IntegerHandler {
 let SeamstressChunk = class SeamstressChunk {
 	id = 0;
 	chunkId = 0;
+	sliceId = 0;
 	type = undefined;
 	offset = 0;
 	offsetStream = 0;
@@ -665,7 +666,7 @@ const Seamstress = class Seamstress {
 		const upThis = this;
 		let dPrefix = `[Seamstress ENQU] Stream depth ${data.depth}, chunk ${data.id} (${data.chunkId}), type "${data.type}", size ${data.data.length} B (0x${(data.offsetData).toString(16)}, ${data.offsetStream}, ${data.offset})`;
 		let isChild = preferredHost?.closed === false;
-		upThis.debugMode && console.debug(`${dPrefix}: Sending to ${isChild ? "child" : "parent"} scheduled.`);
+		//upThis.debugMode && console.debug(`${dPrefix}: Sending to ${isChild ? "child" : "parent"} scheduled.`);
 		if (isChild) {
 			await preferredHost.enqueue(data.data);
 		} else {
@@ -674,7 +675,7 @@ const Seamstress = class Seamstress {
 			};
 			await defaultHost.enqueue(data);
 		};
-		upThis.debugMode && console.debug(`${dPrefix}: Was sent to the ${isChild ? "child" : "parent"} stream host.`);
+		//upThis.debugMode && console.debug(`${dPrefix}: Was sent to the ${isChild ? "child" : "parent"} stream host.`);
 	};
 	#applyNestedContext(subchunkData, streamMeta) {
 		const upThis = this;
@@ -736,7 +737,7 @@ const Seamstress = class Seamstress {
 		sizeBuffer = new Uint8Array(4),
 		readState = 0,
 		isHeaderRead = upThis.headerSize === 0;
-		let seamChunkId = 0, seamChunkMap = new Map(),
+		let seamChunkId = 0, seamChunkMap = new Map(), seamSliceMap = new Map(),
 		seamContext = (upThis.headerSize > 0 && upThis.headerHandler !== undefined) ? undefined : {};
 		let headerBuffer;
 		if (upThis.headerSize > 0) {
@@ -782,7 +783,7 @@ const Seamstress = class Seamstress {
 		*/
 		let streamDebugId = upThis.#randomId();
 		let dPrefixWait = `[Seamstress WAIT] Stream "${streamDebugId}", depth ${upThis.meta.seamstressDepth}:`;
-		upThis.debugMode && console.info(`[Seamstress RSTR] Stream "${streamDebugId}"${upThis.meta.seamstressParentId ? ` ← "${upThis.meta.seamstressParentId}"` : ""} at depth ${upThis.meta.seamstressDepth} has started${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
+		//upThis.debugMode && console.info(`[Seamstress RSTR] Stream "${streamDebugId}"${upThis.meta.seamstressParentId ? ` ← "${upThis.meta.seamstressParentId}"` : ""} at depth ${upThis.meta.seamstressDepth} has started${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
 		(async () => {
 			for await (let chunk of stream) {
 				if (streamHost.closed) {
@@ -792,6 +793,7 @@ const Seamstress = class Seamstress {
 				if (skipLength > chunk.length) {
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
+						subchunkData.sliceId = upThis.#increaseInMap(seamSliceMap, seamChunkId);
 						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 							subchunkData.data = chunk;
 						};
@@ -800,7 +802,7 @@ const Seamstress = class Seamstress {
 						subchunkData.context = seamContext;
 						upThis.#applyNestedContext(subchunkData, seamContext);
 						if (childStreamHost) {
-							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled buffering of an entire chunk.`);
+							//upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled buffering of an entire chunk.`);
 							await childStreamHost.ready;
 						};
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
@@ -815,6 +817,7 @@ const Seamstress = class Seamstress {
 					upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should commit the entire chunk and flush the buffer.`);
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
+						subchunkData.sliceId = upThis.#increaseInMap(seamSliceMap, seamChunkId);
 						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 							subchunkData.data = chunk;
 						};
@@ -823,7 +826,7 @@ const Seamstress = class Seamstress {
 						subchunkData.context = seamContext;
 						upThis.#applyNestedContext(subchunkData, seamContext);
 						if (childStreamHost) {
-							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled commit of an entire chunk.`);
+							//upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream. Scheduled commit of an entire chunk.`);
 							await childStreamHost.ready;
 						};
 						await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
@@ -846,6 +849,7 @@ const Seamstress = class Seamstress {
 					upThis.debugMode && console.debug(`${dPrefix} (${chunkStart}): Should flush the buffer.`);
 					if (isHeaderRead) {
 						let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, chunkSize - skipLength, chunkSize);
+						subchunkData.sliceId = upThis.#increaseInMap(seamSliceMap, seamChunkId);
 						if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 							subchunkData.data = chunk.subarray(0, skipLength);
 						};
@@ -1064,7 +1068,7 @@ const Seamstress = class Seamstress {
 						readState = 0;
 						// Clean-up of the stale child streams
 						if (childStreamHost?.closed === false) {
-							upThis.debugMode && console.debug(`${dPrefixWait} Waiting for the stale child stream to close.`);
+							//upThis.debugMode && console.debug(`${dPrefixWait} Waiting for the stale child stream to close.`);
 							await childStreamHost.closure;
 						};
 						if (handleCollections) {
@@ -1116,6 +1120,7 @@ const Seamstress = class Seamstress {
 					if (skipLength > 0 || shouldEnqueue) {
 						if (skipLength + ptr < chunk.length) {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
+							subchunkData.sliceId = upThis.#increaseInMap(seamSliceMap, seamChunkId);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr, ptr + skipLength);
 								switch (upThis.#type & upThis.MASK_PADDED) {
@@ -1132,12 +1137,13 @@ const Seamstress = class Seamstress {
 							subchunkData.context = seamContext;
 							upThis.#applyNestedContext(subchunkData, seamContext);
 							await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
-							//upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a complete chunk "${chunkType}" (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
+							upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a complete chunk "${chunkType}" (${seamChunkId}, ${seamChunkMap.get(chunkType)}), size ${skipLength} B.`);
 							ptr += skipLength;
 							skipLength = 0;
 							seamChunkId ++;
 						} else {
 							let subchunkData = new SeamstressChunk(seamChunkId, seamChunkMap.get(chunkType), chunkType, 0, chunkSize);
+							subchunkData.sliceId = upThis.#increaseInMap(seamSliceMap, seamChunkId);
 							if (!(dropData && childStreamHost?.readable != null && childStreamHost?.closed)) {
 								subchunkData.data = chunk.subarray(ptr);
 								switch (upThis.#type & upThis.MASK_PADDED) {
@@ -1154,7 +1160,7 @@ const Seamstress = class Seamstress {
 							subchunkData.context = seamContext;
 							upThis.#applyNestedContext(subchunkData, seamContext);
 							await upThis.#enqueueCascade(subchunkData, streamHost, childStreamHost);
-							//upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a potentially incomplete chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}) "${chunkType}", size ${chunk.length - ptr} B.`);
+							upThis.debugMode && console.debug(`${dPrefix2}: Enqueue a potentially incomplete chunk (${seamChunkId}, ${seamChunkMap.get(chunkType)}) "${chunkType}", size ${chunk.length - ptr} B.`);
 							skipLength += ptr - chunk.length;
 							ptr = chunk.length;
 							if (skipLength === 0) {
@@ -1165,7 +1171,7 @@ const Seamstress = class Seamstress {
 						skipLength = 0;
 					};
 					if (skipLength === 0 && childStreamHost?.closed === false) {
-						upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream to empty its backlog.`);
+						//upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream to empty its backlog.`);
 						await childStreamHost.ready;
 						childStreamHost.close();
 						console.info(`[Seamstress CHLD] Child stream at depth ${upThis.meta.seamstressDepth + 1} stopped at depth ${upThis.meta.seamstressDepth}, offset ${chunkStart + ptr} (0x${(chunkStart + ptr + (upThis.meta?.seamstressOffset ?? 0)).toString(16)}). Parent ID: "${streamDebugId}"`);
@@ -1179,12 +1185,12 @@ const Seamstress = class Seamstress {
 				console.warn(`Incoming stream at depth ${upThis.meta.seamstressDepth} may have ended early, with ${skipLength} B still expected.${isHeaderRead ? "" : " The header still hasn't been read."}`);
 			};
 			if (childStreamHost?.closed === false) {
-				upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream to close. The parent stream is going to be closed.`);
+				//upThis.debugMode && console.debug(`${dPrefixWait} Waiting for child stream to close. The parent stream is going to be closed.`);
 				await childStreamHost.closure;
 			};
 			await streamHost.ready;
 			streamHost.close();
-			upThis.debugMode && console.info(`[Seamstress RSTR] Stream "${streamDebugId}"${upThis.meta.seamstressParentId ? ` ← "${upThis.meta.seamstressParentId}"` : ""} at depth ${upThis.meta.seamstressDepth} has stopped${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""}${seamContext?.seamstressParentUse && upThis.meta.seamstressParentUses?.length > 0 ? "." : ""}${seamContext?.seamstressParentUse ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
+			//upThis.debugMode && console.info(`[Seamstress RSTR] Stream "${streamDebugId}"${upThis.meta.seamstressParentId ? ` ← "${upThis.meta.seamstressParentId}"` : ""} at depth ${upThis.meta.seamstressDepth} has stopped${upThis.meta.seamstressParentPath?.length > 0 ? ` (${upThis.meta.seamstressParentUses?.join(".") ?? ""}${seamContext?.seamstressParentUse && upThis.meta.seamstressParentUses?.length > 0 ? "." : ""}${seamContext?.seamstressParentUse ?? ""} | ${upThis.meta.seamstressParentPath.join(".")})` : ""}.`);
 		})().catch((err) => {
 			streamHost.error(err);
 		});
