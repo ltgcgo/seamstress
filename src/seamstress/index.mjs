@@ -1209,6 +1209,7 @@ const Seamstress = class Seamstress {
 		let unbuffered = upThis.#readStreamInternal(stream);
 		let buffer = []; // Maybe a linked list will fit better here? Dynamic arrays could be expensive.
 		let id, chunkId, type, size, context;
+		const seamSliceMap = new Map();
 		let isOffsetWritten = false, offset = 0, offsetData = 0, offsetStream = 0;
 		(async () => {
 			for await (let unbufferedChunk of unbuffered) {
@@ -1231,6 +1232,7 @@ const Seamstress = class Seamstress {
 						throw(new RangeError(`Instructed read length ${readLength} exceeds the boundary of the current subchunk, only ${remainingSize} B remains.`));
 					} else if (readLength > 0) {
 						let subChunk = new SeamstressChunk(id, chunkId, type, unbufferedChunk.offset + inChunkPtr, size);
+						subChunk.sliceId = upThis.#increaseInMap(seamSliceMap, chunkId);
 						subChunk.offsetData = unbufferedChunk.offsetData + inChunkPtr;
 						subChunk.context = context;
 						if (buffer.length > 0) {
@@ -1248,6 +1250,7 @@ const Seamstress = class Seamstress {
 					} else if (readLength === 0) {
 						if (unbufferedChunk.isFinal) {
 							let subChunk = new SeamstressChunk(id, chunkId, type, unbufferedChunk.offset + inChunkPtr, size);
+							subChunk.sliceId = upThis.#increaseInMap(seamSliceMap, chunkId);
 							subChunk.offsetData = unbufferedChunk.offsetData + inChunkPtr;
 							subChunk.context = context;
 							buffer.push(unbufferedChunk.data.subarray(inChunkPtr));
