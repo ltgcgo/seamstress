@@ -1209,8 +1209,14 @@ const Seamstress = class Seamstress {
 				({id, chunkId, type, size, context} = unbufferedChunk);
 				let inChunkPtr = 0;
 				while (inChunkPtr < unbufferedChunk.data.length) {
-					let readLength = upThis.regulateStream(inChunkPtr, unbufferedChunk),
+					let readLength,
 					remainingSize = unbufferedChunk.data.length - inChunkPtr;
+					try {
+						readLength = upThis.regulateStream(inChunkPtr, unbufferedChunk);
+					} catch (err) {
+						console.error(`Stream regulator had thrown when reading at 0x${(unbufferedChunk.offsetData + inChunkPtr).toString(16).padStart(6, "0")} (${inChunkPtr} in chunk).`);
+						throw(err);
+					};
 					if (readLength > remainingSize) {
 						throw(new RangeError(`Instructed read length ${readLength} exceeds the boundary of the current subchunk, only ${remainingSize} B remains.`));
 					} else if (readLength > 0) {
