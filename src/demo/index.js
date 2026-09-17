@@ -16,14 +16,16 @@ const fileProps = JSON.parse('{"extensions":[],"startIn":"pictures","id":"binOpe
 const fileTypes = {
 	"mid": "smf",
 	"kar": "smf",
+	"xws": "xws",
 	"aif": "iff",
 	"aiff": "iff",
+	"bun": "riff",
 	"dls": "riff",
 	"rmi": "riff",
 	"sf2": "riff",
 	"wav": "riff",
 	"webp": "riff",
-	"m2a": "riff",
+	"wrk": "wrk",
 	"rseam": "rseam",
 	"vseam": "vseam"
 };
@@ -112,26 +114,36 @@ const handleBinaryStream = async function (selectedFile) {
 	await textStreamQueue.enqueue([0]);
 	await textStreamQueue.enqueue([4, `Showing the structure of binary stream "${selectedFile.name}" (${selectedFile.size >= 0 ? selectedFile.size : "N/A"} B).\nMode: ${selectedFile.mode}`]);
 	try {
-		let rawParser = new Seamstress();
+		let rawParser;
 		switch (selectedFile.mode) {
 			case "smf": {
+				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32);
 				rawParser.headerSize = 0;
-				rawParser.type = Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32;
-				rawParser.debugMode = true;
+				//rawParser.debugMode = true;
 				break;
 			};
 			case "iff": {
+				rawParser = new Seamstress(rawParser.TYPE_4CC | rawParser.ENDIAN_B | rawParser.LENGTH_U32 | rawParser.MASK_PADDED);
 				rawParser.headerSize = 12;
-				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_B | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
-				rawParser.debugMode = true;
-				rawParser.useCollection = true;
+				//rawParser.debugMode = true;
+				//rawParser.useCollection = true;
 				break;
 			};
 			case "riff": {
+				rawParser = new Seamstress(rawParser.TYPE_4CC | rawParser.ENDIAN_L | rawParser.LENGTH_U32 | rawParser.MASK_PADDED);
 				rawParser.headerSize = 12;
-				rawParser.type = rawParser.TYPE_4CC | rawParser.ENDIAN_L | rawParser.LENGTH_U32 | rawParser.MASK_PADDED;
-				rawParser.debugMode = true;
-				rawParser.useCollection = true;
+				//rawParser.debugMode = true;
+				//rawParser.useCollection = true;
+				break;
+			};
+			case "xws": {
+				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32);
+				rawParser.headerSize = 0;
+				break;
+			};
+			case "wrk": {
+				rawParser = new Seamstress(Seamstress.TYPE_UI8 | Seamstress.ENDIAN_L | Seamstress.LENGTH_U32);
+				rawParser.headerSize = 11;
 				break;
 			};
 			default: {
