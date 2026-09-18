@@ -208,33 +208,57 @@ export class Seamstress {
 	*
 	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian. */
 	readonly MASK_ENDIAN: number;
+	/** Masks endianness of length values. 0 for BE, 1 for LE.
+	*
+	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian. */
 	static readonly MASK_ENDIAN: number;
 	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" selects RVLV-8. */
 	readonly MASK_LENGTH: number;
+	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" selects RVLV-8. */
 	static readonly MASK_LENGTH: number;
-	/** Masks the boolean of if the chunk payloads are padded or not. A true value will treat chunks as padded to even bytes. */
+	/** Masks the boolean of if the chunk payloads are padded or not. Check `Seamstress.PAD_*` for further information. */
 	readonly MASK_PADDED: number;
+	/** Masks the boolean of if the chunk payloads are padded or not. Check `Seamstress.PAD_*` for further information. */
 	static readonly MASK_PADDED: number;
 	/** Masks type of type chunks. 0 for VLV-8, 1 for byte (`u8`), 2 for FourCC (`i32be`). */
 	readonly MASK_TYPE: number;
+	/** Masks type of type chunks. 0 for VLV-8, 1 for byte (`u8`), 2 for FourCC (`i32be`). */
 	static readonly MASK_TYPE: number;
+	/** Use big endian layout for multi-byte values. */
 	readonly ENDIAN_B: number;
+	/** Use big endian layout for multi-byte values. */
 	static readonly ENDIAN_B: number;
+	/** Use little endian layout for multi-byte values. */
 	readonly ENDIAN_L: number;
+	/** Use little endian layout for multi-byte values. */
 	static readonly ENDIAN_L: number;
+	/** Use MIDI VLV-8 for chunk sizes. */
 	readonly LENGTH_VLV: number;
+	/** Use MIDI VLV-8 for chunk sizes. */
 	static readonly LENGTH_VLV: number;
+	/** Use unsigned 32-bit integer for chunk sizes. */
 	readonly LENGTH_U32: number;
+	/** Use unsigned 32-bit integer for chunk sizes. */
 	static readonly LENGTH_U32: number;
+	/** Disable chunk padding. */
 	readonly PAD_NONE: number;
+	/** Disable chunk padding. */
 	static readonly PAD_NONE: number;
+	/** Pad chunks to even bytes. */
 	readonly PAD_EVEN: number;
+	/** Pad chunks to even bytes. */
 	static readonly PAD_EVEN: number;
+	/** Use MIDI VLV-8 for chunk types. */
 	readonly TYPE_VLV: number;
+	/** Use MIDI VLV-8 for chunk types. */
 	static readonly TYPE_VLV: number;
+	/** Use unsigned 8-bit integer for chunk types. */
 	readonly TYPE_UI8: number;
+	/** Use unsigned 8-bit integer for chunk types. */
 	static readonly TYPE_UI8: number;
+	/** Use FourCC as strings for chunk types. */
 	readonly TYPE_4CC: number;
+	/** Use FourCC as strings for chunk types. */
 	static readonly TYPE_4CC: number;
 	/** Set to true to emit verbose debug messages. */
 	debugMode: boolean;
