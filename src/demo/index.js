@@ -123,14 +123,14 @@ const handleBinaryStream = async function (selectedFile) {
 				break;
 			};
 			case "iff": {
-				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32 | Seamstress.MASK_PADDED);
+				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32 | Seamstress.PAD_EVEN);
 				rawParser.headerSize = 12;
 				//rawParser.debugMode = true;
 				//rawParser.useCollection = true;
 				break;
 			};
 			case "riff": {
-				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_L | Seamstress.LENGTH_U32 | Seamstress.MASK_PADDED);
+				rawParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_L | Seamstress.LENGTH_U32 | Seamstress.PAD_EVEN);
 				rawParser.headerSize = 12;
 				//rawParser.debugMode = true;
 				//rawParser.useCollection = true;
