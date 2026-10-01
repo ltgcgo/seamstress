@@ -3,7 +3,7 @@
 	"version": "0.1.2",
 	"license": "LGPL-3.0-only",
 	"exports": {
-		"nativeType": "./dist/nativeType.d.mts",
+		"./nativeType": "./dist/nativeType.d.mts",
 		".": "./dist/seamstress.d.mts"
 	},
 	"imports": {
@@ -73,6 +73,6 @@
 			]
 		}
 	},
-	"nodeModulesDir": false,
+	"nodeModulesDir": "none",
 	"npmRegistry": "http://0.0.0.0:80/"
 }
