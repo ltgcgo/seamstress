@@ -82,7 +82,7 @@ let IntegerHandler = class IntegerHandler {
 	};
 	static #obtainDataView(typedArray) {
 		if (!typedArray[this.#hiddenDataView]) {
-			typedArray[this.#hiddenDataView] = new DataView(typedArray.buffer);
+			typedArray[this.#hiddenDataView] = new DataView(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength);
 		};
 		return typedArray[this.#hiddenDataView];
 	};
