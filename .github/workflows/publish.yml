@@ -25,5 +25,11 @@ jobs:
       - name: Setup WABT
         run: "sudo apt install wabt"
 
+      - name: Build relevant files
+        run: "./shx build"
+
+      - name: Apply dependency graph
+        run: "./shx depGraph"
+
       - name: Publish package
         run: "./shx publish"
