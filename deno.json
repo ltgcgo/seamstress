@@ -1,15 +1,15 @@
 {
 	"name": "@ltgc/seamstress",
-	"version": "0.1.3",
+	"version": "0.2.0",
 	"license": "LGPL-3.0-only",
 	"exports": {
 		".": "./dist/seamstress.d.mts"
 	},
 	"imports": {
-		"@ltgc/rochelle": "jsr:@ltgc/rochelle@^0.3.5"
+		"@ltgc/rochelle": "jsr:@ltgc/rochelle@^0.3.6"
 	},
 	"dependencies": {
-		"jsr:@ltgc/rochelle": "^0.3.0"
+		"jsr:@ltgc/rochelle": "^0.3.6"
 	},
 	"minimumDependencyAge": {
 		"exclude": [
