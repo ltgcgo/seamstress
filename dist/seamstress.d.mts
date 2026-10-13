@@ -1,111 +1,113 @@
 // 2025-2026 © Lightingale Community
 // Licensed under GNU LGPL 3.0
 
-/**
-* A safe tag-length-value byte stream handler. Can be customized to handle SMF, IFF, RIFF and more, under the umbrella of SEAM (Simple Extensible Arbitrary Messaging).
+import type {
+	TypedArraySegments
+} from "../libs/rochelle@ltgcgo/bufferSegments.d.mts";
+import type {
+	uint32
+} from "../libs/rochelle@ltgcgo/nativeType.d.mts";
+
+/** A safe tag-length-value byte stream handler. Can be customized to handle SMF, IFF, RIFF and more, under the umbrella of SEAM (Simple Extensible Arbitrary Messaging).
 * @license LGPL-3.0-only
-* @module cc.ltgc.seamstress
-*/
+* @module cc.ltgc.seamstress */
 
-/**
-* Reading and writing various forms of numeric values.
-*/
-export class IntegerHandler {
-	/** When set to true, methods will use runtime-native APIs and WebAssembly over the pure-JS implementation. */
-	static useNative: boolean;
-	/** When set to true, methods will no longer conduct type checks. Usually has negligible performance impact unless on poorly-optimized runtimes. */
-	static unsafeType: boolean;
-	/** Reads a standard MIDI VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a standard JavaScript number. Will be clamped to 4 bytes, after which it will error out. */
-	static readVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads a standard MIDI VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a BigInt. Will be clamped to 16 bytes, after which it will error out. */
-	static readVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): bigint;
-	/** Counts the size of a standard MIDI VLV-8 value in bytes. Will return 0 when failed. */
-	static sizeVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads a reversible VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a standard JavaScript number. Will be clamped to 4 bytes, after which it will error out. Invalid RVLV values will also error out. */
-	static readRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads a reversible VLV-8 value from a `Uint8Array` or a `Uint8ClampedArray` into a BigInt. Will be clamped to 16 bytes, after which it will error out. Invalid RVLV values will also error out. */
-	static readRVLVBigInt(buffer: Uint8Array|Uint8ClampedArray, offset?:number): bigint;
-	/** Counts the size of a reversible VLV-8 value in bytes. Will return 0 when failed. */
-	static sizeRVLV(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads a boolean. Will error out if out of bounds. One byte has 8 individual bits. `85` will be expanded to `[1, 0, 1, 0, 1, 0, 1, 0]`, while `170` will be expanded to `[0, 1, 0, 1, 0, 1, 0, 1]`. */
-	static readBool(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads an int8 value. Will error out if out of bounds. */
-	static readInt8(buffer: Uint8Array|Uint8ClampedArray, offset?: number): number;
-	/** Reads an int16 value. Will error out if out of bounds. */
-	static readInt16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
-	/** Reads a uint16 value. Will error out if out of bounds. */
-	static readUint16(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
-	/** Reads an int32 value. Will error out if out of bounds. */
-	static readInt32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
-	/** Reads a uint32 value. Will error out if out of bounds. */
-	static readUint32(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): number;
-	/** Reads an int64 value. Will error out if out of bounds. */
-	static readInt64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
-	/** Reads a uint64 value. Will error out if out of bounds. */
-	static readUint64(buffer: Uint8Array|Uint8ClampedArray, isLittleEndian?: boolean, offset?: number): bigint;
-}
-
-/**
-* The context object in use in a stream reading or writing session.
-*/
+/** The context object in use in a stream reading or writing session. */
 export interface SeamstressContext {
-	/**
-	* This field may not be present.
-	* 
-	* Defines the maximum length of the stream that's expected. If the stream exceeds the specified size, it will be cut off at the specified size (length <= size + headerSize). It's always desired to keep the size sealed once parsed. Keep undefined when the size is not or cannot be known.
-	*/
+	/** This field may not be present.
+	*
+	* Defines the maximum length of the stream that's expected. If the stream exceeds the specified size, it will be cut off at the specified size (length <= size + headerSize). It's always desired to keep the size sealed once parsed. Keep undefined when the size is not or cannot be known. */
 	size?: number;
-	/**
-	* This field may not be present.
-	* 
-	* Defines the base structure type of the stream. Common values include `RIFF` for RIFF streams and `FORM` for IFF streams.
-	*/
+	/** This field may not be present.
+	*
+	* Defines the base structure type of the stream. Common values include `RIFF` for RIFF streams and `FORM` for IFF streams. */
 	binaryType?: string;
-	/**
-	* This field may not be present.
-	* 
-	* Defines the upper format of the stream. Common values include `WAVE` for the Microsoft `.wav` files, and `AIFF` for the Apple `.aif` files.
-	*/
+	/** This field may not be present.
+	*
+	* Defines the upper format of the stream. Common values include `WAVE` for the Microsoft `.wav` files, and `AIFF` for the Apple `.aif` files. */
 	binaryFormat?: string;
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the additional offset of the current stream. */
+	seamstressOffset?: number;
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the expected size of the current stream. Must be a non-negative integer. */
+	seamstressExpectedSize?: number;
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the current depth. Starts at `0`. */
+	seamstressDepth?: number;
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the parent stream ID of the current stream. For debug purposes only. */
+	seamstressParentId?: string;
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the parent type of the stream. */
+	seamstressParentPath?: string[];
+	/** This field may not be present. Used by `Seamstress.meta`.
+	*
+	* Defines the use of the parent types of the stream before the immediate parent. */
+	seamstressParentUses?: string;
+	/** This field may not be present.
+	*
+	* Defines the use of the parent type of the stream. */
+	seamstressParentUse?: string;
 }
 
-/**
-* A subchunk of a Seamstress stream. Can be non-buffered, slightly buffered or fully buffered.
-*/
-export interface SeamstressChunk {
+declare class SeamstressChunkBase {
 	/** Index of the (streamed) chunk in u32, starts from 0 and increases by 1 only when a new chunk is progressed. This is to easily differentiate chunks. */
-	id: number;
+	id: uint32;
 	/** Cumulative index of the current chunk in u32, starts from 0 and increases by 1 when a new chunk of the same type is progressed. */
-	chunkId: number;
+	chunkId: uint32;
+	/** Cumulative index of the current subchunk in u32, starts from 0 for every new chunk and increases by 1 for every new subchunk in the same chunk.
+	*
+	* This field is always `0` for fully buffered chunks. */
+	sliceId: uint32;
 	/** Type of the current chunk as either integers or Latin-9 strings. */
 	type: number|string;
-	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this value always set to 0. */
+	/** If the current chunk is a child of a parent chunk (e.g. `LIST`), this property will contain the full path of the current chunk. */
+	typePath?: string[];
+	/** If the current chunk is a child of a parent chunk (e.g. `LIST`), this property will contain the use (e.g. list chunk types) of all parent chunks. */
+	typeUses?: string[];
+	/** The offset of the current (sub)chunk. Chunks from `readChunk()` and the first chunk from `readStream()` have this field always set to `0`. */
 	offset: number;
-	/** The offset of the current data (sub)chunk compared to the rest of the binary stream. */
+	/** (WIP) The offset of the current data (sub)chunk compared to the rest of the scoped binary stream session. */
+	offsetStream: number;
+	/** The offset of the current data (sub)chunk compared to the rest of the full binary stream instance, like the offset within a file. */
 	offsetData: number;
-	/** The full size of the current chunk. */
+	/** The declared full size of the current chunk. */
 	size: number;
-	/** When `true`, the current (streamed) chunk is the last subchunk of the full chunk. Fully buffered chunks always has this value set to `true`. */
+	/** When `true`, the current (streamed) chunk is the last subchunk of the full chunk. Fully buffered chunks always has this value set to `true`. List chunks themselves are never fully buffered. */
 	isFinal: boolean;
-	/** When `true`, the current (streamed) chunk is a fully buffered chunk. */
+	/** When `true`, the current (streamed) chunk is a fully buffered chunk. List chunks themselves are never fully buffered. */
 	isBuffered: boolean;
-	/** The (streamed) payload of the chunk. */
-	data: Uint8Array;
+	/** When `true`, the current (streamed) chunk is a list chunk. This property is dependent on the `typePath` property. */
+	isCollection: boolean;
+	/** The depth of the current (streamed) chunk. Starts at `0`. */
+	depth: number;
 	/** The context properties passed from header. */
 	context?: SeamstressContext;
-	/**
-	* @param id Same as `SeamstressChunk.id`.
+	/** @param id Same as `SeamstressChunk.id`.
 	* @param chunkId Same as `SeamstressChunk.chunkId`.
 	* @param type Same as `SeamstressChunk.type`.
 	* @param offset Same as `SeamstressChunk.offset`.
-	* @param size Same as `SeamstressChunk.size`.
-	*/
-	constructor(id: number, chunkId: number, type: number|string, offset: number, size: number): SeamstressChunk;
+	* @param size Same as `SeamstressChunk.size`. */
+	constructor(id: uint32, chunkId: uint32, type: number|string, offset: number, size: number);
+}
+/** A subchunk of a Seamstress stream. Can be non-buffered, slightly buffered or fully buffered. */
+export class SeamstressChunk extends SeamstressChunkBase {
+	/** The (streamed) payload of the chunk as `Uint8Array`. For RIFF `LIST` chunks, this denotes the type of the `LIST` chunk as a string. */
+	data: Uint8Array|string;
+}
+/** A subchunk of an iterated Seamstress stream. Can be non-buffered, slightly buffered or fully buffered. */
+export class SeamstressChunkIterated extends SeamstressChunkBase {
+	/** The (streamed) payload of the chunk as `Uint8Array` or `TypedArraySegments`. For RIFF `LIST` chunks, this denotes the type of the `LIST` chunk as a string. */
+	data: Uint8Array|TypedArraySegments<Uint8Array, number>|string;
 }
 
-/**
-* Strictly validated Seamstress binary stream serializer.
-*/
+/** Strictly validated Seamstress binary stream serializer. */
 export class SeamstressStrictWriter {
 	/** The result of the serialized stream. */
 	readable: ReadableStream<Uint8Array>;
@@ -121,13 +123,34 @@ export class SeamstressStrictWriter {
 	buffer(): Promise<ArrayBuffer>;
 }
 
-/**
-* A safe TLV reader and writer. Configure an instance to match the format you want to handle, then use the methods provided.
+/** A set of pre-defined format configurations to be used with `Seamstress`. Additional setup may still be required. */
+export class SeamstressPresets {
+	/** IFF-based format. Examples below.
+	* - `.aif`, `.aiff`: Apple AIFF. */
+	static readonly IFF: number;
+	/** RIFF-based format. Examples below.
+	* - `.bun`: Cakewalk Bundle.
+	* - `.dls`: Downloadable Sound.
+	* - `.rmi`: RIFF-contained Standard MIDI File.
+	* - `.wav`: Microsoft WAVE.
+	* - `.webp`: WebP. */
+	static readonly RIFF: number;
+	/** SMF-like format. Examples below.
+	* - `.mid`, `.kar`: Standard MIDI File.
+	* - `.xws`: XGworks Original File. */
+	static readonly SMF: number;
+	/** Cakewalk-like format. */
+	static readonly WRK: number;
+}
+
+/** A safe TLV reader and writer. Configure an instance to match the format you want to handle, then use the methods provided.
 * ```js
-* let binaryParser = new Seamstress();
 * // Configure Seamstress to handle Standard MIDI Files.
+* const binaryParser = new Seamstress(Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32 | Seamstress.PAD_NONE);
 * binaryParser.headerSize = 0;
-* binaryParser.type = Seamstress.TYPE_4CC | Seamstress.ENDIAN_B | Seamstress.LENGTH_U32;
+* // You can also use the preset directly.
+* const binaryParser = new Seamstress(SeamstressPresets.SMF);
+* binaryParser.headerSize = 0;
 * (async () => {
 * 	// If you want to read subchunks without any buffering guarantees.
 * 	for await (let subchunk of binaryParser.readStream(req.body)) {
@@ -137,74 +160,119 @@ export class SeamstressStrictWriter {
 * })().catch((err) => {
 * 	// Error handling here.
 * });
-* ````
-*/
+* ```` */
 export class Seamstress {
-	/**
-	* Masks endianness of length values. 0 for BE, 1 for LE.
-	* 
-	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian.
-	*/
-	MASK_ENDIAN: number;
-	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" is invalid and will error out. */
-	MASK_LENGTH: number;
-	/** Masks the boolean of if the chunk payloads are padded or not. A true value will treat chunks as padded to even bytes. */
-	MASK_PADDED: number;
-	/** Masks type of type chunks. 0 for VLV-8, 1 for FourCC (i32 BE). */
-	MASK_TYPE: number;
-	ENDIAN_B: number;
-	ENDIAN_L: number;
-	LENGTH_VLV: number;
-	LENGTH_U32: number;
-	TYPE_VLV: number;
-	TYPE_4CC: number;
+	/** Masks endianness of length values. 0 for BE, 1 for LE.
+	*
+	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian. */
+	readonly MASK_ENDIAN: number;
+	/** Masks endianness of length values. 0 for BE, 1 for LE.
+	*
+	* Big-endian VLV denotes VLV-8, while "little-endian VLV" denotes RVLV-8, despite RVLV-8 still being big endian. */
+	static readonly MASK_ENDIAN: number;
+	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" selects RVLV-8. */
+	readonly MASK_LENGTH: number;
+	/** Masks encoding of length values. 0 for VLV-8, 1 for u32. "Little-endian VLV-8" selects RVLV-8. */
+	static readonly MASK_LENGTH: number;
+	/** Masks the boolean of if the chunk payloads are padded or not. Check `Seamstress.PAD_*` for further information. */
+	readonly MASK_PADDED: number;
+	/** Masks the boolean of if the chunk payloads are padded or not. Check `Seamstress.PAD_*` for further information. */
+	static readonly MASK_PADDED: number;
+	/** Masks type of type chunks. 0 for VLV-8, 1 for byte (`u8`), 2 for FourCC (`i32be`). */
+	readonly MASK_TYPE: number;
+	/** Masks type of type chunks. 0 for VLV-8, 1 for byte (`u8`), 2 for FourCC (`i32be`). */
+	static readonly MASK_TYPE: number;
+	/** Use big endian layout for multi-byte values. */
+	readonly ENDIAN_B: number;
+	/** Use big endian layout for multi-byte values. */
+	static readonly ENDIAN_B: number;
+	/** Use little endian layout for multi-byte values. */
+	readonly ENDIAN_L: number;
+	/** Use little endian layout for multi-byte values. */
+	static readonly ENDIAN_L: number;
+	/** Use MIDI VLV-8 for chunk sizes. */
+	readonly LENGTH_VLV: number;
+	/** Use MIDI VLV-8 for chunk sizes. */
+	static readonly LENGTH_VLV: number;
+	/** Use unsigned 32-bit integer for chunk sizes. */
+	readonly LENGTH_U32: number;
+	/** Use unsigned 32-bit integer for chunk sizes. */
+	static readonly LENGTH_U32: number;
+	/** Disable chunk padding. */
+	readonly PAD_NONE: number;
+	/** Disable chunk padding. */
+	static readonly PAD_NONE: number;
+	/** Pad chunks to even bytes. */
+	readonly PAD_EVEN: number;
+	/** Pad chunks to even bytes. */
+	static readonly PAD_EVEN: number;
+	/** Use MIDI VLV-8 for chunk types. */
+	readonly TYPE_VLV: number;
+	/** Use MIDI VLV-8 for chunk types. */
+	static readonly TYPE_VLV: number;
+	/** Use unsigned 8-bit integer for chunk types. */
+	readonly TYPE_UI8: number;
+	/** Use unsigned 8-bit integer for chunk types. */
+	static readonly TYPE_UI8: number;
+	/** Use FourCC as strings for chunk types. */
+	readonly TYPE_4CC: number;
+	/** Use FourCC as strings for chunk types. */
+	static readonly TYPE_4CC: number;
 	/** Set to true to emit verbose debug messages. */
 	debugMode: boolean;
-	/** (Non-finalized, WIP) Returns if the list chunk type already exists. Only valid with FourCC types. */
-	hasList(type: string): boolean;
-	/** (Non-finalized, WIP) Registers a type of list chunk, and returns true when successful (isn't already registered). Only valid with FourCC types. Useful for FourCC-typed list chunks containing subchunks. "LIST" will always be registered for IFF/RIFF files.
-	* @param type FourCC in a Latin-9 string.
-	*/
-	addList(type: string): boolean;
-	/** (Non-finalized, WIP) Removes a type of list chunk, and returns true when successful (is registered). Only valid with FourCC types.
-	* @param type FourCC in a Latin-9 string.
-	*/
-	delList(type: string): boolean;
+	/** (WIP) Returns if the list chunk type already exists. Only valid with FourCC types. */
+	isCollection(type: string): boolean;
+	/** (WIP) Registers a type of list chunk, and returns true when successful (isn't already registered). Only valid with FourCC types. Useful for FourCC-typed list chunks containing subchunks. "LIST" will always be registered for IFF/RIFF files.
+	* @param type FourCC in a Latin-9 string. */
+	addCollection(type: string): void;
+	/** (WIP) Removes a type of list chunk, and returns true when successful (is registered). Only valid with FourCC types.
+	* @param type FourCC in a Latin-9 string. */
+	delCollection(type: string): boolean;
+	/** (WIP) When `true`, list chunks are handled automatically whenever possible. */
+	useCollection: boolean;
 	/** Defines the size of the header. 0 for MIDI files, 12 for RIFF files. Defaults to 0. */
 	headerSize: number;
-	/** The type flags of the Seamstress instance. */
-	type: number;
+	/** The type flags of the Seamstress instance. Seamstress will error out if this is not a valid integer.
+	*
+	* Do NOT hard code numeric literals for type flags, construct the bit-fields on-demand instead. You can reuse the constructed bit-fields. */
+	readonly type: number;
+	/** Additional context applicable to all subsequent chunks that affects reader behaviour. */
+	meta?: SeamstressContext;
 	/** Handles the header chunk, specified manually. Called by all stream readers. Returns an object detailing on how to handle the header chunk. Only invoked upon reading.
 	* @param buffer The header getting passed into the handler.
-	* @returns The parsed object that will modify the reader behaviour and provide as the initial context for the streams.
-	*/
+	* @returns The parsed object that will modify the reader behaviour and provide as the initial context for the streams. */
 	headerHandler?(buffer: Uint8Array): SeamstressContext|undefined;
-	/**
-	* Regulates the incoming stream into desired subchunks, specified manually. Called by `Seamstress.regulateStream()`. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the chunk for the stream reader.
-	* 
-	* A non-zero value will cause the specified length from the current subchunk to be emitted, which the process repeats until the current subchunk depletes or the method returns a zero. A zero cause the current remaining section to be buffered and prepended to the next subchunk, until the entire chunk ends causing a forced flush, essentially making an all-zero regulated stream a fully-buffered stream. Any other numeric values will cause an error.
+	/** Regulates the incoming stream into desired subchunks, specified manually. Called by `Seamstress.readRegulated()`. When defined, the method receives the incoming stream chunk buffer first, and its return value is used to truncate the current chunk for the stream reader.
+	*
+	* A non-zero value will cause the specified length from the current subchunk to be emitted, which the process repeats until the current subchunk depletes or the method returns a zero.
+	*
+	* When the method returns a `0`, it will cause the current remaining section to be buffered and prepended to the next subchunk, until the entire chunk ends causing a forced flush, essentially making an all-zero regulated stream a fully-buffered stream. The views of subsequent chunks handed to the regulator method will be supplied as-is without merging. Use `SeamstressChunk.context` to have state persist across subchunk.
+	*
+	* Any other numeric values will cause an error.
 	* @param startOffset The intended read start offset of the provided buffer.
-	* @param chunkInfo The unmodified info of the current (sub)chunk.
-	*/
+	* @param chunkInfo The unmodified info of the current (sub)chunk. */
 	regulateStream?(startOffset: number, chunkInfo: SeamstressChunk): number;
-	/**
-	* Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered.
-	*/
-	readStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): ReadableStream<SeamstressChunk>;
-	/**
-	* Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered, however when the regulator is present, it can be used to ensure that the partial structure of each (in)complete subchunk will be intact. The stream chunk regulation method will be called on each incomplete chunk to regulate the sizes. If there is no regulator, this method will error out immediately.
-	* @param flushAll When true, unfinished chunks will also be flushed instead of discarded.
-	*/
+	/** Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered.
+	* @param noThrow When `true`, incomplete streams will emit warnings instead of throwing errors. */
+	readStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>, noThrow?: boolean): ReadableStream<SeamstressChunk>;
+	/** Reads the incoming stream, and emits a stream of chunks. The returned stream will not guarantee each chunk to be fully buffered, however when the regulator is present, it can be used to ensure that the partial structure of each (in)complete subchunk will be intact. The stream chunk regulation method will be called on each incomplete chunk to regulate the sizes. If there is no regulator, this method will error out immediately.
+	* @param flushAll When `true`, unfinished chunks will also be flushed instead of causing data incomplete errors to be thrown. */
 	readRegulated(stream: ReadableStream<Uint8Array|Uint8ClampedArray>, flushAll?: boolean): ReadableStream<SeamstressChunk>;
-	/**
-	* Reads the incoming stream, and emits a stream of fully buffered chunks.
-	* @param flushAll When true, unfinished chunks will also be flushed instead of discarded.
-	*/
+	/** Reads the incoming stream, and emits a stream of fully buffered chunks.
+	* @param flushAll When `true`, unfinished chunks will also be flushed instead of causing data incomplete errors to be thrown. */
 	readChunks(stream: ReadableStream<Uint8Array|Uint8ClampedArray>, flushAll?: boolean): ReadableStream<SeamstressChunk>;
-	/** (WIP) Writes chunks with strict checks. When header's expected, providing a serializer with a 0-sized header or not providing a serializer will both result in an error. */
+	/** (WIP) Writes chunks with strict checks. When header's expected, providing a serializer with a 0-sized header or not providing a serializer will both result in an error.
+	*
+	* This function does *not* natively handle list chunks by itself. */
 	writeStrict(headerSerializer?: Function): SeamstressStrictWriter;
-	/** (WIP) Writes chunks in an easier way. Providing a serialized header with a 0-sized header or not providing a serialized header when header's expected will both result in an error. */
+	/** (WIP) Writes chunks in an easier way. Providing a serialized header with a 0-sized header or not providing a serialized header when header's expected will both result in an error.
+	*
+	* This function does *not* natively handle list chunks by itself. */
 	writeChunks(serializedHeader?: Uint8Array): TransformStream<SeamstressChunk, Uint8Array>;
-	/** Parses the incoming stream, and emits a map of header types, each with an array of offsets and sizes. This function is virtually useless if the original content of the stream is not kept. */
+	/** Parses the incoming stream, and emits a map of chunk types, each with an array of `[Seamstress.offsetData, Seamstress.size]` pairs.
+	*
+	* This function is virtually useless if the original content of the stream is not kept. This function does *not* handle list chunks. */
 	getMapFromStream(stream: ReadableStream<Uint8Array|Uint8ClampedArray>): Promise<Map<number|string, Array<Array<number>>>>;
+	/** @param typeFlags The type flags of the Seamstress instance. Check `Seamstress.type` for details. */
+	constructor(typeFlags: number);
 }

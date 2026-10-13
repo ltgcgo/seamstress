@@ -22,9 +22,6 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
-      - name: Setup WABT
-        run: "sudo apt install wabt"
-
       - name: Build relevant files
         run: "./shx build"
 
